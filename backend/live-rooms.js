@@ -67,7 +67,7 @@ function syncViewerCount(liveId) {
   const d = db();
   if (!d) return;
   try {
-    d.run("UPDATE lives SET viewer_count = (SELECT COUNT(DISTINCT user_id) FROM live_viewers WHERE live_id = ? AND left_at IS NULL) WHERE id = ?", [liveId, liveId]);
+    d.run("UPDATE lives SET viewer_count = (SELECT COUNT(DISTINCT user_id) FROM live_viewers WHERE live_id = ? AND left_at IS NULL), peak_viewers = MAX(COALESCE(peak_viewers,0), (SELECT COUNT(DISTINCT user_id) FROM live_viewers WHERE live_id = ? AND left_at IS NULL)) WHERE id = ?", [liveId, liveId, liveId]);
   } catch (e) {}
 }
 

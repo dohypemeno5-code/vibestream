@@ -201,6 +201,8 @@ app.use(sessionMiddleware);
 
 // Salas de live em tempo real
 const liveRooms = require('./live-rooms');
+const gaming = require('./routes-gaming');
+const childSafety = require('./child-safety');
 const security = require('./security');
 const auth = require('./auth');
 
@@ -330,6 +332,9 @@ app.use(`${ADMIN_ROUTE}/api`, (req, res) => {
   if (!res.headersSent) { console.log('[404 admin] PID=' + process.pid + ' ' + req.method + ' ' + req.originalUrl); res.status(404).json({ error: 'Endpoint administrativo não encontrado' }); }
 });
 
+// VibeGaming: convidados/moderação/estatísticas (antes do :id das lives)
+app.use('/api', require('./routes-gaming')(db));
+
 // VibeStream routes
 app.use('/api', require('./routes-vibestream')(db));
 
@@ -338,6 +343,7 @@ app.use('/api', require('./creators')(db));
 app.use('/api', require('./routes-families')(db));
 app.use('/api', require('./routes-moderation')(db));
 app.use('/api', require('./routes-ai')(db));
+app.use('/api', require('./routes-drama')(db));
 
 // Economia: presentes, moedas, VIP e recargas
 app.use('/api', require('./routes-economy')(db, firewall));
@@ -560,6 +566,12 @@ wss.on('connection', async (ws, req) => {
         if (!text) return;
         const blocked = isBlockedText(text);
         if (blocked) { liveRooms.send(ws, { type: 'live:error', error: 'Mensagem não permitida' }); return; }
+        const allow = gaming.chatAllowed(msg.liveId, uid, text);
+        if (!allow.allowed) {
+          liveRooms.send(ws, { type: 'live:error', error: allow.reason });
+          if (allow.child) { try { childSafety.applyChildBan(d, { userId: uid, autorId: uid, texto: text, ip: ws.ip || '', userAgent: ws.ua || '', matchedTerm: allow.reason }); } catch (e) {} }
+          return;
+        }
         const id = uuid.v4();
         const user = d().get('SELECT username, display_name, avatar_url FROM users WHERE id = ?', [uid]);
         d().run('INSERT INTO live_comments (id, live_id, user_id, message) VALUES (?, ?, ?, ?)', [id, msg.liveId, uid, text]);
@@ -567,6 +579,16 @@ wss.on('connection', async (ws, req) => {
           type: 'live:comment', liveId: msg.liveId,
           comment: { id, live_id: msg.liveId, user_id: uid, username: user?.username, display_name: user?.display_name, avatar_url: user?.avatar_url, message: text, created_at: new Date().toISOString() }
         });
+        return;
+      }
+
+      if (msg.type === 'live:reaction') {
+        if (!uid) { liveRooms.send(ws, { type: 'live:error', error: 'Faça login para reagir' }); return; }
+        const emoji = String(msg.emoji || '').slice(0, 8);
+        if (!emoji) return;
+        try { d().run('INSERT OR IGNORE INTO live_reactions (id, live_id, user_id, emoji) VALUES (?, ?, ?, ?)', [uuid.v4(), msg.liveId, uid, emoji]); } catch (e) {}
+        const counts = d().query('SELECT emoji, COUNT(*) as c FROM live_reactions WHERE live_id = ? GROUP BY emoji ORDER BY c DESC LIMIT 10', [msg.liveId]);
+        liveRooms.broadcast(msg.liveId, { type: 'live:reaction', liveId: msg.liveId, emoji, user: uid, counts });
         return;
       }
 
@@ -622,6 +644,7 @@ setInterval(() => {
 async function start() {
   try {
     await db.initialize();
+    require('./routes-drama').seedDrama();
 
     // Aplica migrações do banco de dados
     try {

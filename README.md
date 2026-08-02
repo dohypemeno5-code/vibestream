@@ -262,3 +262,32 @@ sudo ./scripts/deploy.sh
 ## 🎮 Jogo novo: Strike Arena 2D
 
 O repositório também contém **`strike-arena/`** — um jogo de tiro 2D completo para Android (APK válido e assinado em `strike-arena/StrikeArena-v1.0.apk`), com menu, contas locais, bots, modos offline e partidas online via LAN. Veja `strike-arena/README.md`.
+
+## 🎮 VibeGaming Live + IA de Voz
+
+- **Lives de jogos**: categoria Games, nome do jogo e miniatura personalizada ao criar live (`POST /api/lives`).
+- **Convidados**: até 4 participantes por live (`/api/lives/:id/guests/invite`, `accept`, `remove`), com janelas de convidado na sala.
+- **Chat inteligente**: comentários em tempo real via WebSocket, fixar comentário (`/pin`), reações com emojis (`/reaction`) e filtro anti-spam/anti-flood.
+- **IA leitora de comentários**: converte comentários em voz (Web Speech API), voz configurável, modo "só perguntas" e bloqueio de mensagens ofensivas.
+- **Presentes e moedas**: alertas na tela ao receber presente, curtidas durante a live e integração com a carteira da plataforma.
+- **Moderação**: ban temporário do chat (`/moderate/ban`), denúncia de mensagem (`/report-message`) e de live (`/report`), proteção infantil ativa.
+- **Painel do criador**: visualizações, seguidores ganhos, tempo transmitido e histórico (`/api/lives/my-stats`).
+- **Notificações**: usuário escolhe receber ou não aviso quando o criador inicia live (`PUT /api/settings/notifications`).
+
+## 🎭 VibeDrama — Novelas e séries
+
+- **Catálogo**: novelas originais com capas geradas por IA, temporadas e episódios (`/api/drama`).
+- **Player**: tela cheia, próximos episódios, curtir, comentar, compartilhar e resumo automático gerado por IA.
+- **Descobrir**: Em Alta, Lançamentos, Recomendadas e "Continuar assistindo" (histórico salvo por usuário).
+- **Minha Área**: favoritas e histórico de visualização (`/api/drama/my`).
+- **Criadores**: perfil de criador, seguir série para receber aviso de novos episódios.
+- **IA**: capas personalizadas (`ai.generateCover`), resumo de episódios, títulos e descrições.
+- **Segurança**: moderação de comentários e conteúdo, proteção infantil aplicada em títulos/comentários.
+
+## 🧪 Testes rápidos das novas APIs
+
+```bash
+curl https://integrate-typically-taste-hypothesis.trycloudflare.com/api/health
+curl https://integrate-typically-taste-hypothesis.trycloudflare.com/api/drama
+```
+

@@ -661,18 +661,22 @@ module.exports = function(database) {
     if (!req.session.userId) return res.status(401).json({ error: 'Não autenticado' });
     const rl = security.rateLimit(db(), 'live:' + req.session.userId, 3600, 6);
     if (rl.blocked) return res.status(429).json({ error: rl.reason });
-    const { title, category, type, isPrivate } = req.body;
+    const { title, category, type, isPrivate, gameName, thumbnailUrl } = req.body;
     if (!title || !String(title).trim()) return res.status(400).json({ error: 'Título é obrigatório' });
     if (String(title).length > 80) return res.status(400).json({ error: 'Título muito longo (máx 80)' });
     const user = db().get('SELECT restriction_level, username, display_name, avatar_url FROM users WHERE id = ?', [req.session.userId]);
     if (user && user.restriction_level === 'restricted') return res.status(403).json({ error: 'Menores de 18 anos não podem criar lives' });
     if (isBlockedText(db, title, 'live_title')) return res.status(400).json({ error: 'Título não permitido' });
+    const childTitle = childSafety.matchChild(String(title) + ' ' + String(gameName || ''));
+    if (childTitle) return res.status(403).json({ error: 'Conteúdo proibido pelas regras de segurança', code: 'CHILD_BANNED' });
 
     const id = uuid.v4();
     const liveTitle = sanitize(String(title)).slice(0, 80);
+    const cleanGame = sanitize(String(gameName || ''), 60);
+    const cleanThumb = String(thumbnailUrl || '').slice(0, 300);
     db().run(
-      "INSERT INTO lives (id, user_id, title, category, tags, type, status, is_private) VALUES (?, ?, ?, ?, '[]', ?, 'live', ?)",
-      [id, req.session.userId, liveTitle, category || 'geral', type === 'audio' ? 'audio' : 'video', isPrivate ? 1 : 0]
+      "INSERT INTO lives (id, user_id, title, category, tags, type, status, is_private, game_name, thumbnail_url, started_at) VALUES (?, ?, ?, ?, '[]', ?, 'live', ?, ?, ?, datetime('now'))",
+      [id, req.session.userId, liveTitle, category || 'geral', type === 'audio' ? 'audio' : 'video', isPrivate ? 1 : 0, cleanGame, cleanThumb]
     );
     db().run("UPDATE users SET is_live = 1, live_title = ? WHERE id = ?", [liveTitle, req.session.userId]);
 
@@ -688,6 +692,8 @@ module.exports = function(database) {
     try {
       const followers = db().query('SELECT follower_id FROM followers WHERE following_id = ?', [req.session.userId]);
       for (const f of followers) {
+        const fol = db().get('SELECT notify_lives FROM users WHERE id = ?', [f.follower_id]);
+        if (fol && fol.notify_lives === 0) continue;
         createNotification(db, f.follower_id, req.session.userId, 'live_started', id, (user && (user.display_name || user.username)) + ' está ao vivo: ' + liveTitle);
       }
     } catch (e) {}

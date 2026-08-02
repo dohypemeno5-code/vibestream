@@ -1033,7 +1033,7 @@ async function loadLives() {
       return;
     }
     container.innerHTML = d.lives.map(l => `
-      <div class="live-card" onclick="enterLive('${l.id}')">
+      <div class="live-card" data-category="${escapeHtml(l.category || 'geral')}" onclick="enterLive('${l.id}')">
         <div class="live-thumb">
           <div class="live-status">🔴 AO VIVO</div>
           <div class="live-viewers">👁️ ${l.viewer_count || 0}</div>
@@ -1050,6 +1050,22 @@ async function loadLives() {
   } catch (e) { showToast(e.message, 'error'); }
 }
 
+let gamingMode = false;
+
+function toggleGaming() {
+  gamingMode = !gamingMode;
+  const page = document.getElementById('pageLives');
+  const btn = document.getElementById('gamingToggleBtn');
+  page.classList.toggle('gaming-on', gamingMode);
+  if (btn) btn.textContent = gamingMode ? 'Desativar' : 'Ativar';
+  document.querySelectorAll('.live-card').forEach(c => {
+    const isGame = c.dataset.category === 'games';
+    c.style.display = gamingMode && !isGame ? 'none' : '';
+  });
+  if (gamingMode) loadLives();
+  showToast(gamingMode ? '🎮 Modo VibeGaming ativado' : 'Modo VibeGaming desativado', gamingMode ? 'success' : '');
+}
+
 function createLive() {
   if (!currentUser) { openAuth(); return; }
   openModal(`
@@ -1060,7 +1076,7 @@ function createLive() {
         <option value="audio">🎤 Live em Áudio</option>
       </select>
       <input type="text" id="liveTitle" class="form-input" placeholder="Título da live">
-      <select id="liveCategory" class="form-input">
+      <select id="liveCategory" class="form-input" onchange="onLiveCategoryChange()">
         <option value="geral">📺 Geral</option>
         <option value="games">🎮 Games</option>
         <option value="musica">🎵 Música</option>
@@ -1068,20 +1084,32 @@ function createLive() {
         <option value="comedia">😂 Comédia</option>
         <option value="educacao">📚 Educação</option>
       </select>
+      <div id="liveGameFields" style="display:none">
+        <input type="text" id="liveGameName" class="form-input" placeholder="Nome do jogo (ex: Futebol Supremo)">
+      </div>
+      <input type="text" id="liveThumb" class="form-input" placeholder="URL da miniatura (opcional)">
+      <p style="font-size:11px;color:var(--text3);margin:8px 0">🎮 No modo VibeGaming: convidados (até 4), chat com IA de voz, presentes e estatísticas.</p>
       <button class="btn-primary btn-full" onclick="startLive()">🔴 Iniciar Live</button>
     </div>
   `);
+}
+
+function onLiveCategoryChange() {
+  const cat = document.getElementById('liveCategory').value;
+  document.getElementById('liveGameFields').style.display = cat === 'games' ? 'block' : 'none';
 }
 
 async function startLive() {
   const title = document.getElementById('liveTitle').value;
   const category = document.getElementById('liveCategory').value;
   const type = document.getElementById('liveType').value;
+  const gameName = document.getElementById('liveGameName')?.value || '';
+  const thumbnailUrl = document.getElementById('liveThumb')?.value || '';
   if (!title) { showToast('Título é obrigatório', 'error'); return; }
   try {
     const d = await api('/lives', {
       method: 'POST',
-      body: JSON.stringify({ title, category, type })
+      body: JSON.stringify({ title, category, type, gameName, thumbnailUrl })
     });
     closeModal();
     showToast('🔴 Live iniciada!', 'success');
@@ -1132,24 +1160,46 @@ async function openLiveRoom(liveId) {
           <div class="live-avatar">${(live.display_name || live.username || '?')[0].toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <strong style="font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(live.title)}</strong>
-            <span style="font-size:12px;color:var(--text2)">@${live.username || ''} · ${live.category || 'geral'}</span>
+            <span style="font-size:12px;color:var(--text2)">@${live.username || ''} · ${live.category || 'geral'}${live.game_name ? ' · 🎮 ' + escapeHtml(live.game_name) : ''}</span>
           </div>
+          ${isStreamer ? `<button class="btn-secondary" style="padding:8px 10px;font-size:12px" onclick="openGamingStats()">📊 Painel</button>` : ''}
+        </div>
+        ${live.thumbnail_url ? `<img src="${escapeHtml(live.thumbnail_url)}" class="live-thumb-custom" alt="miniatura">` : ''}
+        <div class="live-guests" id="liveGuestsRow">
+          <span class="lg-title">👥 Convidados</span>
+          <span class="lg-empty">Sem convidados · máx 4</span>
         </div>
       </div>
+      <div id="liveGiftAlert" class="live-gift-alert hidden"></div>
       <div class="live-room-chat">
+        <div id="livePinnedBar" class="live-pinned hidden"></div>
         <div class="live-chat-list" id="liveChatList"></div>
+        <div class="live-ai-bar">
+          <button class="ai-voice-btn ${aiVoice.enabled ? 'on' : ''}" id="aiVoiceBtn" onclick="toggleAIVoice()">🤖 IA lê comentários</button>
+          <button onclick="openVoiceSettings()" title="Configurar voz">🎙 Voz</button>
+        </div>
         <div class="live-chat-input">
           <input type="text" id="liveChatInput" placeholder="Comente na live..." onkeydown="if(event.key==='Enter')sendLiveComment()">
           <button onclick="sendLiveComment()">➤</button>
         </div>
       </div>
+      <div class="live-reactions">
+        <span class="lr-title">Reações:</span>
+        <button onclick="sendLiveReaction('🔥')">🔥</button>
+        <button onclick="sendLiveReaction('❤️')">❤️</button>
+        <button onclick="sendLiveReaction('😂')">😂</button>
+        <button onclick="sendLiveReaction('👏')">👏</button>
+        <button onclick="sendLiveReaction('🚀')">🚀</button>
+      </div>
       <div class="live-actions">
         <button class="btn-primary" style="flex:1" onclick="liveLike()">❤️ <span id="liveLikeCount">${d.likes_count || 0}</span></button>
         <button class="btn-secondary" style="flex:1" onclick="liveGift()">🎁 Presente</button>
+        <button class="btn-secondary" style="flex:1;color:#ff6b81" onclick="reportLiveNow()">🚨</button>
         ${streamerActions}
       </div>
     </div>
   `);
+  loadLiveGuests(liveId);
 
   renderLiveComments(d.messages || []);
   connectLiveWs(liveId, isStreamer, live.type === 'audio');
@@ -1200,6 +1250,22 @@ function handleLiveMsg(msg) {
     appendLiveComment({ message: `🎁 ${msg.user.display_name || msg.user.username} enviou um presente!`, display_name: 'VibeStream', username: 'presentes', created_at: new Date().toISOString(), gift: true });
     if (msg.gift && msg.gift.image_url) showGiftAnimation(msg.gift.image_url, msg.gift.name || '');
   }
+  if (msg.type === 'live:pin') {
+    const bar = document.getElementById('livePinnedBar');
+    if (bar) {
+      if (msg.pinned) {
+        bar.classList.remove('hidden');
+        bar.innerHTML = `📌 <b>${escapeHtml(msg.pinned.display_name || msg.pinned.username || '')}</b>: ${escapeHtml(msg.pinned.message)}`;
+      } else bar.classList.add('hidden');
+    }
+  }
+  if (msg.type === 'live:reaction' && msg.emoji) {
+    const box = document.getElementById('liveGiftAlert');
+    if (box) { box.classList.remove('hidden'); box.innerHTML = `<span class="lga-emoji">${msg.emoji}</span>`; clearTimeout(box._t); box._t = setTimeout(() => box.classList.add('hidden'), 1200); }
+  }
+  if (msg.type === 'live:mod') {
+    if (msg.action === 'ban') showToast('🔨 Usuário banido do chat por ' + (msg.minutes || 10) + ' min', 'info');
+  }
   if (msg.type === 'live:ended') {
     showToast('⏹️ Live encerrada' + (msg.reason ? ': ' + msg.reason : ''), 'info');
     closeModal();
@@ -1227,6 +1293,7 @@ function appendLiveComment(c) {
       <small>${getTimeAgo(c.created_at)}</small>
     </div>`);
   list.scrollTop = list.scrollHeight;
+  if (aiVoice.enabled && c.message && !c.gift) speakAIText(c.message);
   // Sala de áudio (estilo Poppo)
   const alist = document.getElementById('audioChatList');
   if (alist) {
@@ -2872,4 +2939,521 @@ async function submitAIReport(id) {
     closeModal();
     showToast(d.message || 'Denúncia enviada!', 'success');
   } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ============================================================
+// VIBEGAMING LIVE — convidados, reações, IA de voz, moderação
+// ============================================================
+let aiVoice = { enabled: false, voiceURI: '', questionsOnly: false };
+
+async function loadLiveGuests(liveId) {
+  const row = document.getElementById('liveGuestsRow');
+  if (!row) return;
+  try {
+    const d = await api('/lives/' + liveId + '/guests');
+    const g = d.guests || [];
+    let html = `<span class="lg-title">👥 Convidados (${g.length}/${d.max})</span>`;
+    if (!g.length) html += '<span class="lg-empty">Sem convidados · toque em + para convidar</span>';
+    g.forEach(gu => {
+      const isMe = currentUser && gu.user_id === currentUser.id;
+      const hostCtl = (liveRoomState.isStreamer && !isMe) ? `<button class="lg-x" onclick="removeGuest('${liveRoomState.liveId}','${gu.user_id}')">✕</button>` : '';
+      html += `<span class="lg-guest">${gu.avatar_url ? `<img src="${gu.avatar_url}" alt="">` : (gu.display_name || '?')[0].toUpperCase()}${escapeHtml(gu.display_name || gu.username || '').slice(0,10)}${hostCtl}</span>`;
+    });
+    html += `<button class="lg-add" onclick="inviteGuest()">+ Convidar</button>`;
+    row.innerHTML = html;
+  } catch (e) {}
+}
+
+function inviteGuest() {
+  if (!currentUser) { openAuth(); return; }
+  if (!liveRoomState.liveId) return;
+  openModal(`
+    <div style="max-width:420px">
+      <h3>👥 Convidar para a live</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Digite o nome de usuário (ou @) e envie o convite. Até 4 convidados.</p>
+      <input type="text" id="guestSearch" class="form-input" placeholder="Nome de usuário" oninput="searchGuest()">
+      <div id="guestResults" style="margin-top:10px"></div>
+    </div>
+  `);
+}
+async function searchGuest() {
+  const q = document.getElementById('guestSearch').value.trim();
+  const box = document.getElementById('guestResults');
+  if (!q || q.length < 2) { box.innerHTML = ''; return; }
+  try {
+    const d = await api('/users/search?q=' + encodeURIComponent(q));
+    const users = (d.users || []).filter(u => u.id !== currentUser.id).slice(0, 5);
+    box.innerHTML = users.map(u => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div class="kw-avatar-diamond" style="width:40px;height:40px"><div class="in">${u.avatar_url ? `<img src="${u.avatar_url}" alt="">` : (u.display_name || u.username || '?')[0].toUpperCase()}</div></div>
+        <div style="flex:1;min-width:0"><b style="font-size:13px">${escapeHtml(u.display_name || u.username)}</b><small style="color:var(--text3);display:block">@${escapeHtml(u.username)}</small></div>
+        <button class="btn-primary" style="padding:8px 12px;font-size:12px" onclick="sendInvite('${u.id}')">📨 Convidar</button>
+      </div>`).join('') || '<p style="color:var(--text3);font-size:13px">Ninguém encontrado</p>';
+  } catch (e) {}
+}
+async function sendInvite(userId) {
+  try {
+    const d = await api('/lives/' + liveRoomState.liveId + '/guests/invite', { method: 'POST', body: JSON.stringify({ userId }) });
+    closeModal();
+    showToast(d.message || 'Convite enviado!', 'success');
+    loadLiveGuests(liveRoomState.liveId);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function removeGuest(liveId, uid) {
+  try {
+    const d = await api(`/lives/${liveId}/guests/${uid}/remove`, { method: 'POST' });
+    showToast(d.message || 'Convidado removido', 'success');
+    loadLiveGuests(liveId);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function sendLiveReaction(emoji) {
+  if (!currentUser) { openAuth(); return; }
+  if (!liveRoomState.liveId) return;
+  if (liveWs && liveWs.readyState === 1) liveWs.send(JSON.stringify({ type: 'live:reaction', liveId: liveRoomState.liveId, emoji }));
+  else api('/lives/' + liveRoomState.liveId + '/reaction', { method: 'POST', body: JSON.stringify({ emoji }) }).catch(() => {});
+}
+
+// ---------- IA de voz (lê comentários) ----------
+function toggleAIVoice() {
+  if (!('speechSynthesis' in window)) { showToast('Este aparelho não suporta voz por IA', 'error'); return; }
+  aiVoice.enabled = !aiVoice.enabled;
+  const btn = document.getElementById('aiVoiceBtn');
+  if (btn) { btn.classList.toggle('on', aiVoice.enabled); btn.textContent = aiVoice.enabled ? '🔊 IA lê comentários' : '🤖 IA lê comentários'; }
+  if (aiVoice.enabled) { speechSynthesis.cancel(); showToast('🤖 A IA agora lê os comentários em voz', 'success'); }
+  else { speechSynthesis.cancel(); }
+}
+function openVoiceSettings() {
+  const voices = ('speechSynthesis' in window) ? speechSynthesis.getVoices() : [];
+  if (!voices.length) { try { speechSynthesis.onvoiceschanged = () => openVoiceSettings(); } catch (e) {} }
+  openModal(`
+    <div style="max-width:420px">
+      <h3>🎙 Voz da IA</h3>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Escolha a voz que lê os comentários da sua live.</p>
+      <select id="aiVoiceSelect" class="form-input">
+        ${voices.map(v => `<option value="${escapeHtml(v.name)}" ${v.name === aiVoice.voiceURI ? 'selected' : ''}>${escapeHtml(v.name)} (${v.lang})</option>`).join('') || '<option value="">Voz padrão do aparelho</option>'}
+      </select>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:var(--text2)">
+        <input type="checkbox" id="aiQuestionsOnly" ${aiVoice.questionsOnly ? 'checked' : ''}> Ler apenas perguntas dos espectadores
+      </label>
+      <button class="btn-primary btn-full" style="margin-top:14px" onclick="saveVoiceSettings()">Salvar</button>
+    </div>
+  `);
+}
+function saveVoiceSettings() {
+  aiVoice.voiceURI = document.getElementById('aiVoiceSelect')?.value || '';
+  aiVoice.questionsOnly = !!document.getElementById('aiQuestionsOnly')?.checked;
+  closeModal();
+  showToast('🎙 Voz configurada!', 'success');
+}
+function speakAIText(text) {
+  if (!aiVoice.enabled || !('speechSynthesis' in window)) return;
+  const clean = String(text || '').replace(/https?:\/\/\S+/g, '').trim();
+  if (!clean) return;
+  const blockedWords = ['novinha', 'novinho', 'pedof', 'lolicon', 'vou te matar', 'te mato', 'puta', 'buceta', 'pau no cu'];
+  const lower = clean.toLowerCase();
+  if (blockedWords.some(w => lower.includes(w))) return;
+  if (aiVoice.questionsOnly && !/\?/.test(clean)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(clean.slice(0, 120));
+    u.lang = 'pt-BR';
+    if (aiVoice.voiceURI) {
+      const v = speechSynthesis.getVoices().find(x => x.name === aiVoice.voiceURI);
+      if (v) u.voice = v;
+    }
+    u.rate = 1.05; u.pitch = 1;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// ---------- Moderação ----------
+function pinLiveComment(cid) {
+  if (!liveRoomState.liveId) return;
+  api('/lives/' + liveRoomState.liveId + '/pin', { method: 'POST', body: JSON.stringify({ commentId: cid }) })
+    .then(() => showToast('📌 Comentário fixado', 'success'))
+    .catch(e => showToast(e.message, 'error'));
+}
+function banLiveUser(uid, name) {
+  if (!liveRoomState.liveId) return;
+  openModal(`
+    <div style="max-width:400px">
+      <h3>🔨 Banir do chat</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Banir <b>${escapeHtml(name)}</b> temporariamente do chat desta live?</p>
+      <select id="banMinutes" class="form-input">
+        <option value="5">5 minutos</option>
+        <option value="10" selected>10 minutos</option>
+        <option value="30">30 minutos</option>
+        <option value="1440">1 dia</option>
+      </select>
+      <button class="btn-primary btn-full" style="margin-top:12px;background:linear-gradient(135deg,#ff4757,#ff6b81)" onclick="confirmBanUser('${uid}')">🔨 Banir</button>
+    </div>
+  `);
+}
+async function confirmBanUser(uid) {
+  const minutes = document.getElementById('banMinutes').value;
+  try {
+    const d = await api('/lives/' + liveRoomState.liveId + '/moderate/ban', { method: 'POST', body: JSON.stringify({ userId: uid, minutes: parseInt(minutes), reason: 'moderação' }) });
+    closeModal();
+    showToast(d.message || 'Usuário banido', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+function reportLiveMessage(mid, msg) {
+  openModal(`
+    <div class="report-modal">
+      <h3>🚨 Denunciar mensagem</h3>
+      <p style="font-size:13px;color:var(--text2)">"${escapeHtml(String(msg || '').slice(0, 80))}"</p>
+      <textarea id="msgReportReason" class="form-input" rows="3" placeholder="Motivo da denúncia..."></textarea>
+      <button class="btn-primary btn-full" onclick="submitMsgReport('${mid}')">Enviar</button>
+    </div>
+  `);
+}
+async function submitMsgReport(mid) {
+  const reason = document.getElementById('msgReportReason').value;
+  if (!reason || reason.trim().length < 5) { showToast('Descreva o motivo', 'error'); return; }
+  try {
+    const d = await api('/lives/' + liveRoomState.liveId + '/report-message', { method: 'POST', body: JSON.stringify({ messageId: mid, reason }) });
+    closeModal(); showToast(d.message || 'Denúncia enviada!', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+function reportLiveNow() {
+  openModal(`
+    <div class="report-modal">
+      <h3>🚨 Denunciar live</h3>
+      <select id="reportLiveOpt" class="form-input">
+        <option value="conteúdo inapropriado">Conteúdo inapropriado</option>
+        <option value="live falsa">Live falsa / gravada</option>
+        <option value="violência">Violência</option>
+        <option value="ódio">Discurso de ódio</option>
+        <option value="outro">Outro</option>
+      </select>
+      <textarea id="reportLiveDesc" class="form-input" rows="3" placeholder="Detalhes (opcional)" style="margin-top:8px"></textarea>
+      <button class="btn-primary btn-full" style="margin-top:10px" onclick="submitLiveReport()">Enviar denúncia</button>
+    </div>
+  `);
+}
+async function submitLiveReport() {
+  const reason = document.getElementById('reportLiveOpt').value;
+  const description = document.getElementById('reportLiveDesc').value;
+  try {
+    const d = await api('/lives/' + liveRoomState.liveId + '/report', { method: 'POST', body: JSON.stringify({ reason, description }) });
+    closeModal(); showToast(d.message || 'Denúncia enviada!', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ---------- Painel do criador ----------
+async function openGamingStats() {
+  if (!currentUser) { openAuth(); return; }
+  try {
+    const d = await api('/lives/my-stats');
+    const s = d.data || {};
+    const recent = (s.recent || []).map(r => `
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">${escapeHtml(r.title || 'Live')}</span>
+        <span style="color:${r.status === 'live' ? '#ff4757' : 'var(--text3)'}">${r.status === 'live' ? '🔴 ao vivo' : 'encerrada'} · 👁 ${r.peak_viewers || r.viewer_count || 0}</span>
+      </div>`).join('') || '<p style="color:var(--text3);font-size:13px">Nenhuma live ainda</p>';
+    openModal(`
+      <div class="gaming-stats">
+        <h3>📊 Painel do Criador</h3>
+        <div class="gs-grid">
+          <div class="gs-card"><b>${fmtK(s.totalViews || 0)}</b><small>Visualizações</small></div>
+          <div class="gs-card"><b>${fmtK(s.followers || 0)}</b><small>Seguidores</small></div>
+          <div class="gs-card"><b>${Math.floor((s.totalMinutes || 0) / 60)}h ${Math.round((s.totalMinutes || 0) % 60)}m</b><small>Transmitido</small></div>
+          <div class="gs-card"><b>${fmtK(s.peak || 0)}</b><small>Pico de viewers</small></div>
+        </div>
+        <div style="font-size:14px;font-weight:700;margin:12px 0 6px">🕘 Histórico de lives (${s.liveCount || 0})</div>
+        ${recent}
+      </div>
+    `);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ============================================================
+// VIBEDRAMA — novelas, séries e histórias
+// ============================================================
+let dramaTabState = 'home';
+
+async function dramaInit() {
+  if (!document.getElementById('dramaContent')) return;
+  dramaTabState = 'home';
+  document.querySelectorAll('.drama-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'home'));
+  try {
+    const d = await api('/drama');
+    dramaRenderHome(d.data);
+  } catch (e) {
+    document.getElementById('dramaContent').innerHTML = `<div class="drama-error">Não foi possível carregar o VibeDrama. <button class="btn-primary" onclick="dramaInit()">🔄 Tentar novamente</button></div>`;
+  }
+}
+
+function dramaTab(tab) {
+  dramaTabState = tab;
+  document.querySelectorAll('.drama-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  const box = document.getElementById('dramaContent');
+  if (!box) return;
+  box.innerHTML = '<div class="drama-loading">🎭 Carregando…</div>';
+  api('/drama').then(dd => {
+    const data = dd.data;
+    if (tab === 'home') dramaRenderHome(data);
+    else if (tab === 'alta') box.innerHTML = `<h3 class="drama-sec-title">🔥 Em Alta</h3><div class="drama-grid">${data.emAlta.map(dramaCard).join('')}</div>`;
+    else if (tab === 'novidades') box.innerHTML = `<h3 class="drama-sec-title">🆕 Lançamentos</h3><div class="drama-grid">${data.lancamentos.map(dramaCard).join('')}</div>`;
+    else if (tab === 'minha') dramaRenderMinha();
+  }).catch(() => { box.innerHTML = '<div class="drama-error">Erro ao carregar. <button class="btn-primary" onclick="dramaInit()">🔄 Tentar</button></div>'; });
+}
+
+function dramaRenderHome(data) {
+  const box = document.getElementById('dramaContent');
+  const hero = (data.emAlta || [])[0];
+  let html = '';
+  if (hero) html += `
+    <div class="drama-hero" onclick="dramaOpenSeries('${hero.id}')">
+      <img src="${hero.cover_url || ''}" alt="">
+      <div class="drama-hero-grad"></div>
+      <div class="drama-hero-info">
+        <span class="drama-chip">🔥 Em Alta</span>
+        <h2>${escapeHtml(hero.title)}</h2>
+        <p>${escapeHtml((hero.synopsis || '').slice(0, 110))}</p>
+        <button class="drama-btn-play">▶ Assistir agora</button>
+      </div>
+    </div>`;
+  if (data.continuar && data.continuar.length) {
+    html += `<h3 class="drama-sec-title">▶ Continuar assistindo</h3><div class="drama-hrow">` + data.continuar.map(c => `
+      <div class="drama-continue" onclick="dramaOpenEpisode('${c.episode_id}')">
+        <img src="${c.cover_url || ''}" alt="">
+        <div class="dc-progress"><i style="width:${c.duration ? Math.min(100, Math.round(c.progress / c.duration * 100)) : 0}%"></i></div>
+        <span>${escapeHtml(c.series_title)} · EP ${c.ep_number}</span>
+      </div>`).join('') + `</div>`;
+  }
+  const rows = [
+    ['🔥 Em Alta', data.emAlta], ['👑 Mais Assistidas', data.maisAssistidas],
+    ['🆕 Lançamentos', data.lancamentos], ['✨ Recomendadas', data.recomendadas]
+  ];
+  rows.forEach(([title, list]) => {
+    if (!list || !list.length) return;
+    html += `<h3 class="drama-sec-title">${title}</h3><div class="drama-hrow">${list.slice(0, 8).map(dramaCard).join('')}</div>`;
+  });
+  html += `<h3 class="drama-sec-title">🎬 Todas as novelas</h3><div class="drama-grid">${(data.todas || []).map(dramaCard).join('')}</div>`;
+  box.innerHTML = html;
+}
+
+function dramaCard(s) {
+  return `
+    <div class="drama-card" onclick="dramaOpenSeries('${s.id}')">
+      <img src="${s.cover_url || ''}" alt="" loading="lazy">
+      <div class="drama-card-info">
+        <b>${escapeHtml(s.title)}</b>
+        <small>${s.total_episodes || 0} eps · 👁 ${fmtK(s.views || 0)}</small>
+      </div>
+    </div>`;
+}
+
+async function dramaRenderMinha() {
+  const box = document.getElementById('dramaContent');
+  if (!currentUser) { box.innerHTML = '<div class="drama-error">Faça login para ver sua área.</div>'; return; }
+  try {
+    const d = await api('/drama/my');
+    const data = d.data;
+    box.innerHTML = `
+      <h3 class="drama-sec-title">❤️ Favoritas</h3>
+      <div class="drama-grid">${(data.favoritos || []).map(dramaCard).join('') || '<p class="drama-empty">Nenhuma favorita ainda. Toque no ♥ de uma novela!</p>'}</div>
+      <h3 class="drama-sec-title">🕘 Histórico</h3>
+      <div class="drama-hrow">${(data.historico || []).slice(0, 10).map(h => `
+        <div class="drama-continue" onclick="dramaOpenEpisode('${h.episode_id}')">
+          <img src="${h.cover_url || ''}" alt="">
+          <span>${escapeHtml(h.series_title)} · EP ${h.number}</span>
+        </div>`).join('') || '<p class="drama-empty">Você ainda não assistiu nada.</p>'}</div>`;
+  } catch (e) { box.innerHTML = '<div class="drama-error">' + escapeHtml(e.message) + '</div>'; }
+}
+
+async function dramaOpenSeries(id) {
+  const box = document.getElementById('dramaContent');
+  box.innerHTML = '<div class="drama-loading">🎭 Carregando novela…</div>';
+  try {
+    const d = await api('/drama/series/' + id);
+    const s = d.series;
+    const creator = d.creator;
+    const seasonsHtml = (d.seasons || []).map(se => `
+      <div class="drama-season">
+        <div class="drama-season-title">🎬 ${escapeHtml(se.title || ('Temporada ' + se.number))}</div>
+        ${(se.episodes || []).map(ep => `
+          <div class="drama-ep-row" onclick="dramaOpenEpisode('${ep.id}')">
+            <div class="drama-ep-thumb"><img src="${ep.thumbnail_url || s.cover_url || ''}" alt=""><span class="drama-ep-play">▶</span></div>
+            <div class="drama-ep-info">
+              <b>EP ${ep.number} · ${escapeHtml(ep.title)}</b>
+              <small>${ep.duration ? fmtDur(ep.duration) : ''} · 👁 ${fmtK(ep.views || 0)}</small>
+              <p>${escapeHtml((ep.summary || ep.synopsis || '').slice(0, 90))}</p>
+            </div>
+          </div>`).join('')}
+      </div>`).join('');
+    box.innerHTML = `
+      <div class="drama-back" onclick="dramaInit()">← Voltar</div>
+      <div class="drama-detail">
+        <div class="drama-detail-hero">
+          <img src="${s.cover_url || ''}" alt="">
+          <div class="drama-detail-info">
+            <h2>${escapeHtml(s.title)}</h2>
+            <p>${escapeHtml(s.synopsis || '')}</p>
+            <div class="drama-meta"><span>${s.category || 'drama'}</span><span>${s.year || '2026'}</span><span>${s.total_seasons || 0} temporadas</span><span>${s.total_episodes || 0} episódios</span></div>
+            ${creator ? `<div class="drama-creator" onclick="dramaOpenCreator('${creator.id}')">${creator.avatar_url ? `<img src="${creator.avatar_url}" alt="">` : (creator.display_name || '?')[0].toUpperCase()}<span>Por <b>${escapeHtml(creator.display_name || creator.username)}</b></span></div>` : ''}
+            <div class="drama-detail-actions">
+              <button class="drama-btn-play" onclick="${d.seasons && d.seasons[0] && d.seasons[0].episodes[0] ? `dramaOpenEpisode('${d.seasons[0].episodes[0].id}')` : 'showToast(\'Sem episódios ainda\')'}">▶ Assistir</button>
+              <button class="drama-btn-ghost ${s.favorite ? 'on' : ''}" onclick="dramaToggleFavorite('${s.id}')">${s.favorite ? '♥ Favorita' : '♡ Favoritar'}</button>
+              <button class="drama-btn-ghost ${s.following ? 'on' : ''}" onclick="dramaToggleFollow('${s.id}')">${s.following ? '🔔 Seguindo' : '🔕 Seguir'}</button>
+            </div>
+          </div>
+        </div>
+        <h3 class="drama-sec-title">📺 Episódios</h3>
+        ${seasonsHtml}
+      </div>`;
+  } catch (e) { box.innerHTML = '<div class="drama-error">' + escapeHtml(e.message) + '</div>'; }
+}
+
+async function dramaToggleFavorite(id) {
+  try {
+    const d = await api('/drama/series/' + id + '/favorite', { method: 'POST' });
+    showToast(d.favorite ? '♥ Adicionada às favoritas!' : 'Removida das favoritas', d.favorite ? 'success' : '');
+    dramaOpenSeries(id);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function dramaToggleFollow(id) {
+  try {
+    const d = await api('/drama/series/' + id + '/follow', { method: 'POST' });
+    showToast(d.following ? '🔔 Você vai receber avisos de novos episódios!' : 'Seguindo removido', d.following ? 'success' : '');
+    dramaOpenSeries(id);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function dramaOpenCreator(id) {
+  const box = document.getElementById('dramaContent');
+  try {
+    const d = await api('/drama/creator/' + id);
+    box.innerHTML = `
+      <div class="drama-back" onclick="dramaInit()">← Voltar</div>
+      <div class="drama-creator-page">
+        <div class="kw-avatar-diamond" style="width:84px;height:84px;margin:0 auto"><div class="in">${d.creator.avatar_url ? `<img src="${d.creator.avatar_url}" alt="">` : (d.creator.display_name || '?')[0].toUpperCase()}</div></div>
+        <h2>${escapeHtml(d.creator.display_name || d.creator.username)}</h2>
+        <p style="color:var(--text3);font-size:13px">${escapeHtml(d.creator.bio || 'Criador(a) VibeDrama')}</p>
+        <h3 class="drama-sec-title">🎬 Obras</h3>
+        <div class="drama-grid">${(d.works || []).map(dramaCard).join('') || '<p class="drama-empty">Nenhuma obra ainda</p>'}</div>
+      </div>`;
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ---------- Player ----------
+let dramaPlayer = { ep: null, timer: null };
+
+async function dramaOpenEpisode(id) {
+  const box = document.getElementById('dramaContent');
+  box.innerHTML = '<div class="drama-loading">🎬 Carregando episódio…</div>';
+  try {
+    const d = await api('/drama/episodes/' + id);
+    const ep = d.episode;
+    const s = d.series;
+    dramaPlayer.ep = ep;
+    const mediaHtml = ep.video_url
+      ? `<video id="dramaVideo" src="${ep.video_url}" controls playsinline autoplay class="drama-video"></video>`
+      : `<canvas id="dramaCanvas" class="drama-video" width="720" height="405"></canvas><div class="drama-ai-note">🤖 Prévia gerada pela IA (sem vídeo enviado) — criadores podem enviar o episódio real</div>`;
+    box.innerHTML = `
+      <div class="drama-back" onclick="dramaOpenSeries('${ep.series_id}')">← ${escapeHtml((s && s.title) || 'Série')}</div>
+      <div class="drama-player">
+        <div class="drama-player-wrap">${mediaHtml}
+          <div class="drama-player-top">
+            <span class="drama-chip">EP ${ep.number}</span>
+            ${d.next ? `<button class="drama-next-btn" onclick="dramaOpenEpisode('${d.next}')">Próximo ▶</button>` : ''}
+          </div>
+        </div>
+        <h2>${escapeHtml(ep.title)}</h2>
+        <p class="drama-ep-synopsis">${escapeHtml(ep.synopsis || '')}</p>
+        <div class="drama-ep-summary">🤖 ${escapeHtml(ep.summary || '')}</div>
+        <div class="drama-ep-actions">
+          <button class="drama-btn-ghost ${ep.liked ? 'on' : ''}" onclick="dramaLike('${ep.id}')">${ep.liked ? '❤️' : '🤍'} ${ep.likes_count || 0}</button>
+          <button class="drama-btn-ghost" onclick="dramaShare()">🔗 Compartilhar</button>
+        </div>
+        <div class="drama-comments">
+          <h3>💬 Comentários</h3>
+          <div id="dramaCommentList" class="drama-comment-list"></div>
+          <div class="drama-comment-input">
+            <input type="text" id="dramaCommentInput" class="form-input" placeholder="Comente este episódio..." onkeydown="if(event.key==='Enter')dramaSendComment('${ep.id}')">
+            <button class="btn-primary" onclick="dramaSendComment('${ep.id}')">➤</button>
+          </div>
+        </div>
+      </div>`;
+    dramaLoadComments(id);
+    if (!ep.video_url) dramaPlayCanvas(ep);
+    else {
+      const v = document.getElementById('dramaVideo');
+      if (v) {
+        v.ontimeupdate = () => { try { api('/drama/episodes/' + ep.id + '/watch', { method: 'POST', body: JSON.stringify({ progress: Math.round(v.currentTime), duration: Math.round(v.duration || 0) }) }).catch(() => {}); } catch (e) {} };
+        v.onended = () => { if (d.next) showToast('▶ Próximo episódio disponível', 'info'); };
+      }
+    }
+  } catch (e) { box.innerHTML = '<div class="drama-error">' + escapeHtml(e.message) + '</div>'; }
+}
+
+function dramaPlayCanvas(ep) {
+  const cv = document.getElementById('dramaCanvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const colors = ['#20002c', '#6a11cb', '#0f2027', '#2c5364'];
+  const lines = [ep.title || '', ep.summary || ep.synopsis || ''];
+  let t = 0;
+  clearInterval(dramaPlayer.timer);
+  dramaPlayer.timer = setInterval(() => {
+    t += 0.02;
+    const g = ctx.createLinearGradient(0, 0, 720, 405);
+    g.addColorStop(0, colors[0]); g.addColorStop(1, colors[2]);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 720, 405);
+    ctx.fillStyle = 'rgba(124,58,237,0.35)';
+    ctx.beginPath(); ctx.arc(180 + 120 * Math.sin(t * 3), 120, 110, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(6,182,212,0.3)';
+    ctx.beginPath(); ctx.arc(560 + 100 * Math.cos(t * 2), 320, 130, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('▶ VibeDrama', 360, 50);
+    ctx.font = 'bold 26px sans-serif';
+    const txt = lines[0] || '';
+    ctx.fillText(txt.slice(0, 46), 360, 190);
+    ctx.font = '17px sans-serif'; ctx.fillStyle = '#e2e8f0';
+    wrapText(ctx, (lines[1] || '').slice(0, 130), 360, 250, 560, 26);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '15px sans-serif';
+    ctx.fillText('✦ Resumo gerado pela IA · VibeStream', 360, 375);
+    const bar = document.querySelector('.drama-player-wrap');
+    if (bar) bar.setAttribute('data-progress', t.toFixed(2));
+    if (t > 30) clearInterval(dramaPlayer.timer);
+  }, 50);
+}
+
+async function dramaLoadComments(epId) {
+  try {
+    const d = await api('/drama/episodes/' + epId + '/comments');
+    const list = document.getElementById('dramaCommentList');
+    if (!list) return;
+    list.innerHTML = (d.comments || []).map(c => `
+      <div class="drama-comment">
+        <div class="drama-c-av">${c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : (c.display_name || '?')[0].toUpperCase()}</div>
+        <div><b>${escapeHtml(c.display_name || c.username)}</b><p>${escapeHtml(c.text)}</p><small>${getTimeAgo(c.created_at)}</small></div>
+      </div>`).join('') || '<p style="color:var(--text3);font-size:13px;padding:10px 0">Seja o primeiro a comentar!</p>';
+  } catch (e) {}
+}
+async function dramaSendComment(epId) {
+  const input = document.getElementById('dramaCommentInput');
+  const text = input?.value?.trim();
+  if (!text) return;
+  try {
+    await api('/drama/episodes/' + epId + '/comments', { method: 'POST', body: JSON.stringify({ text }) });
+    input.value = '';
+    dramaLoadComments(epId);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function dramaLike(epId) {
+  try {
+    const d = await api('/drama/episodes/' + epId + '/like', { method: 'POST' });
+    dramaOpenEpisode(epId);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+function dramaShare() {
+  if (navigator.share) navigator.share({ title: 'VibeDrama', url: location.href }).catch(() => {});
+  else { navigator.clipboard && navigator.clipboard.writeText(location.href).then(() => showToast('Link copiado!', 'success')); }
+}
+
+function fmtDur(sec) {
+  const m = Math.floor((sec || 0) / 60), s = (sec || 0) % 60;
+  return m + 'min';
 }

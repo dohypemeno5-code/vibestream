@@ -213,6 +213,8 @@ function generateBundle(idea, styleKey) {
 
 module.exports = {
   STYLES, COST_PER_GENERATION, DAILY_LIMIT_USER, DAILY_LIMIT_VIP,
-  generateBundle, checkContentSafety, getBalance, getVipTier,
+  generateBundle, generateCover, generateTitle, generateDescription,
+  generateHashtags, generateCaption, generateScript,
+  checkContentSafety, getBalance, getVipTier,
   dailyLimit, usedToday, bumpUsage, spendCredits, log
 };

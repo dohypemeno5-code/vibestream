@@ -1427,3 +1427,398 @@ select.form-input {
 .ai-status.st-published { background: rgba(16,185,129,.2); color: #34d399; }
 .ai-status.st-denied { background: rgba(255,107,129,.2); color: #ff6b81; }
 .ai-status.st-deleted { background: rgba(255,255,255,.08); color: var(--text3); }
+
+/* ============================================================
+   VIBEGAMING LIVE — lives de games + convidados + IA de voz
+   ============================================================ */
+.gaming-banner {
+  display: flex; align-items: center; gap: 12px;
+  margin: 12px 2px 4px; padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(16,185,129,.16), rgba(6,182,212,.14));
+  border: 1px solid rgba(6,182,212,.35);
+  cursor: pointer; position: relative; overflow: hidden;
+}
+.gaming-banner::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(300px 120px at 100% 0%, rgba(16,185,129,.25), transparent 70%);
+  pointer-events: none;
+}
+.gaming-banner-ic {
+  width: 44px; height: 44px; flex: 0 0 44px; border-radius: 14px;
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; box-shadow: 0 4px 14px rgba(6,182,212,.4);
+}
+.gaming-banner b { display: block; font-size: 14.5px; }
+.gaming-banner small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--text2); line-height: 1.4; }
+.gaming-banner-btn {
+  margin-left: auto; white-space: nowrap;
+  background: linear-gradient(135deg, #10b981, #06b6d4); color: #04231f;
+  font-weight: 800; font-size: 12px; padding: 8px 14px; border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(6,182,212,.35); z-index: 1;
+}
+#pageLives.gaming-on { border-radius: 0; }
+#pageLives.gaming-on .lives-header h2 { color: #34d399; }
+#pageLives.gaming-on .live-card[data-category="games"] {
+  border-color: rgba(6,182,212,.45);
+  box-shadow: 0 6px 22px rgba(6,182,212,.18);
+}
+.live-thumb-custom {
+  width: 100%; max-height: 130px; object-fit: cover; display: block;
+  border-radius: 0 0 12px 12px; border-top: 1px solid var(--border);
+}
+.live-guests {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 12px; background: rgba(16,185,129,.08);
+  border-bottom: 1px solid var(--border);
+}
+.lg-title { font-size: 12px; font-weight: 800; color: #34d399; }
+.lg-empty { font-size: 11.5px; color: var(--text3); }
+.lg-guest {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px 10px 4px 4px; font-size: 11.5px;
+}
+.lg-guest img {
+  width: 20px; height: 20px; border-radius: 50%; object-fit: cover;
+  border: 1px solid var(--border2);
+}
+.lg-guest::before {
+  content: ''; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--grad-soft); display: inline-flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 800;
+}
+.lg-x {
+  border: none; background: rgba(255,77,109,.18); color: var(--danger);
+  width: 18px; height: 18px; border-radius: 50%; font-size: 10px;
+  line-height: 1; cursor: pointer; margin-left: 2px;
+}
+.lg-add {
+  border: 1px dashed rgba(6,182,212,.5); background: rgba(6,182,212,.1);
+  color: var(--blue); border-radius: 999px; padding: 6px 12px;
+  font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.live-gift-alert {
+  position: fixed; left: 50%; top: 18%; transform: translateX(-50%);
+  z-index: 90; max-width: 88vw;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: #fff; font-weight: 800; font-size: 15px;
+  padding: 14px 22px; border-radius: 18px;
+  box-shadow: 0 12px 34px rgba(124,58,237,.5);
+  animation: giftPop .45s cubic-bezier(.2,1.4,.4,1) both;
+  text-align: center;
+}
+@keyframes giftPop {
+  0% { opacity: 0; transform: translateX(-50%) scale(.6); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+.live-pinned {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(245,165,36,.12); border: 1px solid rgba(245,165,36,.4);
+  color: var(--warning); font-size: 12.5px; font-weight: 700;
+  border-radius: 12px; padding: 9px 12px; margin-bottom: 8px;
+}
+.live-ai-bar { display: flex; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
+.ai-voice-btn {
+  flex: 1; border: 1px solid rgba(124,58,237,.4);
+  background: rgba(124,58,237,.12); color: #c4b5fd;
+  border-radius: 12px; padding: 9px 10px; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.ai-voice-btn.on {
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: #fff; border-color: transparent;
+  animation: aiPulse 2s infinite;
+}
+@keyframes aiPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,.45); }
+  50% { box-shadow: 0 0 0 8px rgba(124,58,237,0); }
+}
+.live-ai-bar button:not(.ai-voice-btn) {
+  border: 1px solid var(--border); background: var(--card2); color: var(--text2);
+  border-radius: 12px; padding: 9px 12px; font-size: 12px; cursor: pointer;
+}
+.live-reactions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 6px 2px;
+}
+.lr-title { font-size: 11.5px; color: var(--text3); margin-right: 4px; }
+.live-reactions button {
+  border: 1px solid var(--border); background: var(--card2);
+  width: 40px; height: 36px; border-radius: 12px; font-size: 17px; cursor: pointer;
+  transition: transform .12s;
+}
+.live-reactions button:active { transform: scale(1.25); }
+.live-chat-item .lc-mod {
+  float: right; border: none; background: rgba(255,77,109,.15); color: var(--danger);
+  border-radius: 8px; font-size: 10px; padding: 3px 7px; cursor: pointer; margin-left: 6px;
+}
+.live-chat-item.pinned { border: 1px solid rgba(245,165,36,.5); background: rgba(245,165,36,.08); }
+.live-chat-item.reaction { background: rgba(124,58,237,.12); font-size: 18px; text-align: center; }
+.gaming-stats { padding: 6px 4px; }
+.gs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.gs-card {
+  background: linear-gradient(160deg, var(--card2), var(--card));
+  border: 1px solid var(--border); border-radius: 16px; padding: 16px 12px;
+  text-align: center;
+}
+.gs-card b {
+  display: block; font-size: 20px; font-weight: 900;
+  background: linear-gradient(135deg, #34d399, #06b6d4);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.gs-card small { color: var(--text3); font-size: 11px; }
+
+/* ============================================================
+   VIBEDRAMA — novelas, séries, player e área do criador
+   ============================================================ */
+.drama-page { padding: 4px 0 16px; }
+.drama-nav {
+  position: sticky; top: 0; z-index: 30;
+  background: linear-gradient(180deg, var(--bg), rgba(11,11,20,.92));
+  padding: 10px 2px 8px; backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.drama-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 19px; font-weight: 900; letter-spacing: .3px;
+  color: var(--text);
+}
+.drama-logo > span:last-child { color: #a855f7; }
+.drama-logo-m {
+  width: 26px; height: 26px; border-radius: 9px;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; box-shadow: 0 4px 12px rgba(168,85,247,.45);
+}
+.drama-tabs {
+  display: flex; gap: 8px; margin-top: 12px; overflow-x: auto;
+  scrollbar-width: none; padding-bottom: 2px;
+}
+.drama-tabs::-webkit-scrollbar { display: none; }
+.drama-tab {
+  white-space: nowrap; border: 1px solid var(--border);
+  background: var(--card); color: var(--text2);
+  border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.drama-tab.active {
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 4px 14px rgba(124,58,237,.35);
+}
+.drama-hero {
+  position: relative; height: 210px; border-radius: var(--radius-lg);
+  overflow: hidden; margin: 14px 0; cursor: pointer;
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  display: flex; align-items: flex-end;
+}
+.drama-hero img, .drama-hero .dh-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+}
+.drama-hero-grad {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.05) 30%, rgba(5,5,15,.95) 100%);
+}
+.drama-hero-info { position: relative; z-index: 2; padding: 16px; width: 100%; }
+.drama-hero-info h2 {
+  font-size: 21px; font-weight: 900; margin: 6px 0 2px;
+  text-shadow: 0 2px 12px rgba(0,0,0,.6);
+}
+.drama-hero-info p { font-size: 12px; color: rgba(255,255,255,.8); margin-bottom: 10px; }
+.drama-chip {
+  display: inline-block; background: linear-gradient(135deg, #ff3d5a, #ff8a3d);
+  color: #fff; font-size: 10.5px; font-weight: 800;
+  border-radius: 999px; padding: 4px 10px; letter-spacing: .4px;
+}
+.drama-sec-title {
+  font-size: 15.5px; font-weight: 800; margin: 18px 2px 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.drama-hrow {
+  display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px;
+  scrollbar-width: none;
+}
+.drama-hrow::-webkit-scrollbar { display: none; }
+.drama-continue {
+  flex: 0 0 120px; border-radius: 14px; overflow: hidden; cursor: pointer;
+  background: var(--card2); border: 1px solid var(--border);
+  position: relative; transition: transform .15s;
+}
+.drama-continue:hover { transform: translateY(-2px); }
+.drama-continue img { width: 120px; height: 74px; object-fit: cover; display: block; }
+.drama-continue b { display: block; font-size: 11px; padding: 8px 8px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drama-continue small { display: block; font-size: 9.5px; color: var(--text3); padding: 0 8px 8px; }
+.drama-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  padding: 2px;
+}
+.drama-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden; cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.drama-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.drama-card img {
+  width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block;
+  background: linear-gradient(160deg, var(--bg3), var(--card));
+}
+.drama-card-info { padding: 10px 12px 12px; }
+.drama-card-info b {
+  display: block; font-size: 13px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.drama-card-info small { color: var(--text3); font-size: 10.5px; }
+.drama-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text2); font-size: 13px; font-weight: 700;
+  cursor: pointer; padding: 10px 2px;
+}
+.drama-back:hover { color: var(--text); }
+.drama-detail { padding: 4px 2px; }
+.drama-detail-hero {
+  display: flex; gap: 14px; background: var(--card);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 14px; margin-bottom: 6px;
+}
+.drama-detail-hero img {
+  width: 104px; height: 148px; flex: 0 0 104px;
+  border-radius: 14px; object-fit: cover;
+  box-shadow: 0 8px 22px rgba(0,0,0,.4);
+}
+.drama-detail-info { flex: 1; min-width: 0; }
+.drama-detail-info h2 { font-size: 17px; font-weight: 900; line-height: 1.25; }
+.drama-detail-info .drama-desc {
+  font-size: 12px; color: var(--text2); margin-top: 6px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.drama-meta {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+.drama-meta span {
+  font-size: 10px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px 9px; color: var(--text2);
+}
+.drama-creator {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px;
+  cursor: pointer; padding: 6px 10px; border-radius: 12px;
+  background: var(--bg3); border: 1px solid var(--border);
+  width: fit-content; max-width: 100%;
+}
+.drama-creator img, .drama-creator span::first-letter {
+  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+}
+.drama-creator span { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drama-creator b { color: var(--text); }
+.drama-detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.drama-btn-play {
+  border: none; border-radius: 13px; padding: 12px 22px;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4); color: #fff;
+  font-weight: 800; font-size: 13.5px; cursor: pointer;
+  box-shadow: 0 6px 18px rgba(124,58,237,.35);
+}
+.drama-btn-ghost {
+  border: 1px solid var(--border); background: var(--card2); color: var(--text2);
+  border-radius: 13px; padding: 12px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.drama-btn-ghost.on { border-color: #a855f7; color: #c084fc; background: rgba(168,85,247,.1); }
+.drama-season { margin-top: 8px; }
+.drama-season-title {
+  font-size: 14px; font-weight: 800; margin: 14px 2px 8px;
+  color: var(--text2);
+}
+.drama-ep-row {
+  display: flex; gap: 12px; align-items: center;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px; margin-bottom: 8px; cursor: pointer;
+  transition: transform .12s;
+}
+.drama-ep-row:hover { transform: translateX(3px); border-color: var(--border2); }
+.drama-ep-thumb {
+  position: relative; width: 92px; height: 58px; flex: 0 0 92px;
+  border-radius: 10px; overflow: hidden; background: var(--bg3);
+}
+.drama-ep-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.drama-ep-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.35); color: #fff; font-size: 18px;
+}
+.drama-ep-info { flex: 1; min-width: 0; }
+.drama-ep-info b { display: block; font-size: 13px; }
+.drama-ep-info small { color: var(--text3); font-size: 11px; display: block; margin-top: 2px; }
+.drama-ep-info .drama-ep-time { font-size: 10px; color: var(--text3); margin-top: 3px; }
+.drama-creator-page {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 14px;
+}
+.drama-creator-page img, .drama-creator-page .dc-fallback {
+  width: 62px; height: 62px; border-radius: 50%; object-fit: cover;
+  background: var(--grad); color: #fff; font-size: 26px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.drama-creator-page b { font-size: 16px; display: block; }
+.drama-creator-page small { color: var(--text3); font-size: 11.5px; }
+.drama-player { margin: 6px 0; }
+.drama-player-wrap {
+  position: relative; border-radius: var(--radius-lg); overflow: hidden;
+  background: #000; aspect-ratio: 16 / 9;
+  box-shadow: var(--shadow);
+}
+.drama-video { width: 100%; height: 100%; display: block; background: #000; }
+.drama-player-top {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px; z-index: 5;
+  background: linear-gradient(180deg, rgba(0,0,0,.6), transparent);
+}
+.drama-next-btn {
+  border: none; background: rgba(255,255,255,.16); color: #fff;
+  backdrop-filter: blur(8px); border-radius: 999px;
+  padding: 8px 16px; font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.drama-ai-note {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
+  font-size: 10.5px; color: #d8b4fe; background: rgba(30,10,60,.75);
+  padding: 7px 12px; text-align: center; backdrop-filter: blur(6px);
+}
+.drama-ep-synopsis { font-size: 12.5px; color: var(--text2); line-height: 1.55; margin-top: 12px; }
+.drama-ep-summary {
+  margin-top: 10px; font-size: 12px; color: #c4b5fd; line-height: 1.55;
+  background: rgba(124,58,237,.1); border: 1px solid rgba(124,58,237,.25);
+  border-radius: 14px; padding: 12px 14px;
+}
+.drama-ep-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.drama-comments { margin-top: 6px; }
+.drama-comments h4 {
+  font-size: 14px; font-weight: 800; margin: 10px 2px;
+  display: flex; align-items: center; gap: 8px;
+}
+.drama-comment-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+.drama-comment {
+  display: flex; gap: 10px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 14px; padding: 10px;
+}
+.drama-c-av {
+  width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%;
+  background: var(--grad-soft); color: var(--primary2); font-weight: 800; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.drama-c-av img { width: 100%; height: 100%; object-fit: cover; }
+.drama-comment b { font-size: 12px; color: var(--primary2); }
+.drama-comment p { font-size: 12.5px; margin-top: 2px; line-height: 1.5; }
+.drama-comment-input { display: flex; gap: 8px; margin-top: 10px; }
+.drama-comment-input input {
+  flex: 1; background: var(--card2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 11px 14px; color: var(--text); font-size: 13px; outline: none;
+}
+.drama-comment-input button {
+  border: none; background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: #fff; border-radius: 12px; padding: 0 18px; font-size: 15px; cursor: pointer;
+}
+.drama-loading, .drama-error, .drama-empty {
+  text-align: center; color: var(--text3); font-size: 13px;
+  padding: 30px 10px;
+}
+.drama-error { color: var(--danger); }
+.drama-error .btn-primary { margin-top: 12px; }

@@ -524,6 +524,92 @@ module.exports = function(db) {
     } catch (e) { console.error('[MIGRATION] proteção infantil:', e.message); }
 
     // ============================================================
+    // VIBEGAMING LIVE: convidados, moderação, reações, estatísticas
+    // ============================================================
+    try {
+      const lvCols = db.query('PRAGMA table_info(lives)').map(c => c.name);
+      if (!lvCols.includes('thumbnail_url')) { db.run("ALTER TABLE lives ADD COLUMN thumbnail_url TEXT DEFAULT ''"); }
+      if (!lvCols.includes('game_name')) { db.run("ALTER TABLE lives ADD COLUMN game_name TEXT DEFAULT ''"); }
+      if (!lvCols.includes('started_at')) { db.run("ALTER TABLE lives ADD COLUMN started_at TEXT DEFAULT ''"); }
+      if (!lvCols.includes('ended_at')) { db.run("ALTER TABLE lives ADD COLUMN ended_at TEXT DEFAULT ''"); }
+      if (!lvCols.includes('peak_viewers')) { db.run("ALTER TABLE lives ADD COLUMN peak_viewers INTEGER DEFAULT 0"); }
+      try { db.run("ALTER TABLE live_comments ADD COLUMN pinned INTEGER DEFAULT 0"); } catch (e) {}
+      const uCols = db.query('PRAGMA table_info(users)').map(c => c.name);
+      if (!uCols.includes('notify_lives')) { db.run("ALTER TABLE users ADD COLUMN notify_lives INTEGER DEFAULT 1"); }
+      db.run(`CREATE TABLE IF NOT EXISTS live_guests (
+        id TEXT PRIMARY KEY, live_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        status TEXT DEFAULT 'pendente' CHECK(status IN ('pendente','aceito','removido')),
+        role TEXT DEFAULT 'guest' CHECK(role IN ('guest','moderador')),
+        invited_by TEXT DEFAULT '', joined_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(live_id, user_id)
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS live_chat_bans (
+        id TEXT PRIMARY KEY, live_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        until_at TEXT NOT NULL, reason TEXT DEFAULT '', banned_by TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS live_reactions (
+        id TEXT PRIMARY KEY, live_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        emoji TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(live_id, user_id, emoji)
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS live_message_reports (
+        id TEXT PRIMARY KEY, live_id TEXT NOT NULL, message_id TEXT DEFAULT '',
+        reporter_id TEXT NOT NULL, reason TEXT DEFAULT '', status TEXT DEFAULT 'pendente',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      console.log('[MIGRATION] ✅ VibeGaming: convidados + moderação + reações');
+    } catch (e) { console.error('[MIGRATION] gaming:', e.message); }
+
+    // ============================================================
+    // VIBEDRAMA: séries, temporadas, episódios, histórico
+    // ============================================================
+    try {
+      db.run(`CREATE TABLE IF NOT EXISTS drama_series (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, synopsis TEXT DEFAULT '',
+        cover_url TEXT DEFAULT '', creator_id TEXT DEFAULT '', category TEXT DEFAULT 'drama',
+        year TEXT DEFAULT '2026', status TEXT DEFAULT 'publicado', views INTEGER DEFAULT 0,
+        likes_count INTEGER DEFAULT 0, total_seasons INTEGER DEFAULT 0, total_episodes INTEGER DEFAULT 0,
+        featured INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS drama_seasons (
+        id TEXT PRIMARY KEY, series_id TEXT NOT NULL, number INTEGER DEFAULT 1,
+        title TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS drama_episodes (
+        id TEXT PRIMARY KEY, series_id TEXT NOT NULL, season_id TEXT DEFAULT '',
+        number INTEGER DEFAULT 1, title TEXT DEFAULT '', synopsis TEXT DEFAULT '',
+        summary TEXT DEFAULT '', video_url TEXT DEFAULT '', duration INTEGER DEFAULT 0,
+        thumbnail_url TEXT DEFAULT '', views INTEGER DEFAULT 0, likes_count INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS drama_favorites (
+        user_id TEXT NOT NULL, series_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, series_id)
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS drama_series_follows (
+        user_id TEXT NOT NULL, series_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, series_id)
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS drama_history (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, series_id TEXT NOT NULL,
+        episode_id TEXT NOT NULL, progress INTEGER DEFAULT 0, duration INTEGER DEFAULT 0,
+        watched_at TEXT DEFAULT (datetime('now'))
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS drama_likes (
+        user_id TEXT NOT NULL, episode_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, episode_id)
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS drama_comments (
+        id TEXT PRIMARY KEY, episode_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        text TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      try { db.run("CREATE INDEX IF NOT EXISTS idx_drama_ep_series ON drama_episodes(series_id, season_id, number)"); } catch (e) {}
+      try { db.run("CREATE INDEX IF NOT EXISTS idx_drama_hist_user ON drama_history(user_id, watched_at)"); } catch (e) {}
+      console.log('[MIGRATION] ✅ VibeDrama: séries + temporadas + episódios');
+    } catch (e) { console.error('[MIGRATION] drama:', e.message); }
+
+    // ============================================================
     // VIBEAI CREATOR: drafts, logs, uso diário e denúncias
     // ============================================================
     try {

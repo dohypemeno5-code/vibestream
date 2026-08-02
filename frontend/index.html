@@ -95,6 +95,14 @@
         <h2>🎥 Lives Agora</h2>
         <button class="btn-primary btn-live" onclick="createLive()">🔴 Criar Live</button>
       </div>
+      <div class="gaming-banner" onclick="toggleGaming()">
+        <div class="gaming-banner-ic">🎮</div>
+        <div>
+          <b>VibeGaming Live</b>
+          <small>Lives de games com chat por IA, convidados e presentes</small>
+        </div>
+        <span class="gaming-banner-btn" id="gamingToggleBtn">Ativar</span>
+      </div>
       <div id="livesContainer" class="lives-grid"></div>
     </div>
 
@@ -169,6 +177,22 @@
       </div>
     </div>
 
+
+    <div id="pageDrama" class="page">
+      <div class="drama-page">
+        <div class="drama-nav">
+          <div class="drama-logo"><span class="drama-logo-m">▶</span> Vibe<span>Drama</span></div>
+          <div class="drama-tabs" id="dramaTabs">
+            <button class="drama-tab active" data-tab="home" onclick="dramaTab('home')">Início</button>
+            <button class="drama-tab" data-tab="alta" onclick="dramaTab('alta')">Em Alta</button>
+            <button class="drama-tab" data-tab="novidades" onclick="dramaTab('novidades')">Lançamentos</button>
+            <button class="drama-tab" data-tab="minha" onclick="dramaTab('minha')">Minha Área</button>
+          </div>
+        </div>
+        <div id="dramaContent"><div class="drama-loading">🎭 Carregando novelas…</div></div>
+      </div>
+    </div>
+
     <!-- BOTTOM NAV -->
     <nav class="bottom-nav">
       <button class="nav-btn active" onclick="switchPage('Feed')" data-page="Feed">🏠<span>Feed</span></button>
@@ -177,6 +201,7 @@
       <button class="nav-btn" onclick="switchPage('Chat')" data-page="Chat">💬<span>Chat</span></button>
       <button class="nav-btn" onclick="switchPage('Profile')" data-page="Profile">👤<span>Perfil</span></button>
       <button class="nav-btn ai-nav" onclick="switchPage('AICreator'); aiInit()" data-page="AICreator">✨<span>Criar com IA</span></button>
+      <button class="nav-btn drama-nav" onclick="switchPage('Drama'); dramaInit()" data-page="Drama">🎭<span>Drama</span></button>
     </nav>
 
     <!-- RODAPÉ LEGAL -->
