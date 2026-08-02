@@ -104,9 +104,10 @@ function resolve(db, req) {
 
 // Define o cookie de autenticação (HttpOnly, SameSite, Secure quando HTTPS)
 function setCookie(res, token, secure) {
+  // SameSite=None + Secure permite login a partir do GitHub Pages (origem cruzada)
   res.cookie(TOKEN_COOKIE, token, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: secure ? 'none' : 'lax',
     secure: !!secure,
     maxAge: TOKEN_TTL_MS,
     path: '/'
