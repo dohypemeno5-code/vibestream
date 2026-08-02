@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>VibeDrama — Feed Vertical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { colors: { vg: '#0a0a0f', purplex: '#8b5cf6', card: '#1a1a23' }, fontFamily: { pop: ['Poppins','sans-serif'] } } }
+  };
+</script>
+<style>
+  html, body { height: 100%; background: #0a0a0f; overscroll-behavior: none; }
+  * { -webkit-tap-highlight-color: transparent; }
+  .snap-feed { scroll-snap-type: y mandatory; scrollbar-width: none; }
+  .snap-feed::-webkit-scrollbar { display: none; }
+  .snap-slide { scroll-snap-align: start; scroll-snap-stop: always; }
+  .film-bubble { box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  .film-bubble::after {
+    content: '🎬'; position: absolute; right: -14px; bottom: -14px; font-size: 22px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
+  }
+  .corner-frame { position: relative; }
+  .corner-frame::before, .corner-frame::after {
+    content: ''; position: absolute; width: 22px; height: 22px; border: 3px solid #8b5cf6;
+    pointer-events: none;
+  }
+  .corner-frame::before { top: -6px; left: -6px; border-right: 0; border-bottom: 0; }
+  .corner-frame::after { bottom: -6px; right: -6px; border-left: 0; border-top: 0; }
+  .like-pop { animation: likePop .4s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes likePop { 0% { transform: scale(.5); } 60% { transform: scale(1.45); } 100% { transform: scale(1); } }
+  .toast-x { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); z-index: 60;
+    background: #8b5cf6; color: #fff; font-weight: 700; font-size: 13px; padding: 10px 18px; border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(139,92,246,.5); animation: toastIn .3s; white-space: nowrap; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } }
+  .sheet { animation: sheetUp .28s ease-out; }
+  @keyframes sheetUp { from { transform: translateY(100%); } }
+</style>
+</head>
+<body class="bg-vg text-white font-pop select-none">
+<div id="root"></div>
+
+<script src="data/videos.js"></script>
+<script src="js/coins.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+const BASE_VIDEOS = (window.VIBE_VIDEOS || []).map(v => ({ ...v, liked: false, saved: false }));
+
+function loadLS(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } }
+function saveLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+function fmtN(n) {
+  n = Number(n || 0);
+  if (n >= 1000000) return (n / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
+  if (n >= 1000) return (n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
+  return String(n);
+}
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast-x';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); }, 2200);
+}
+
+function Slide({ video, active, onEnded, onLike, onSave, onFollow, onComment, followMap, loopLast }) {
+  const videoRef = useRef(null);
+  const [playing, setPlaying] = useState(true);
+  const [likedAnim, setLikedAnim] = useState(false);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (active) {
+      v.muted = true;
+      v.play().catch(() => {});
+      setPlaying(true);
+    } else {
+      v.pause();
+    }
+  }, [active]);
+
+  // recompensa: assistir dramAs (3/dia = +30)
+  const rewardGiven = useRef(false);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !active) return;
+    const t = setInterval(() => {
+      if (v.duration && v.currentTime > v.duration * 0.25 && !rewardGiven.current) {
+        rewardGiven.current = true;
+        const r = window.VS_Coins.watchVideo(video.id, video.tag);
+        if (r.granted) toast('+30 moedas por assistir dramas! 🪙');
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [active]);
+
+  const handleLike = () => { onLike(video.id); setLikedAnim(true); setTimeout(() => setLikedAnim(false), 450); };
+  const followed = !!followMap[video.id];
+
+  return (
+    <div className="snap-slide relative h-full w-full overflow-hidden bg-black" data-id={video.id}>
+      <video
+        ref={videoRef}
+        src={video.videoUrl}
+        className="absolute inset-0 w-full h-full object-cover"
+        muted playsInline preload="metadata"
+        loop={loopLast}
+        onEnded={onEnded}
+        onClick={() => { const v = videoRef.current; if (!v) return; if (v.paused) { v.play(); setPlaying(true); } else { v.pause(); setPlaying(false); } }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none" />
+
+      {/* TOPO */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 z-20" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+        <button onClick={() => location.href = 'index.html'} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-lg active:scale-90">←</button>
+        <div className="flex items-center gap-2 bg-black/25 backdrop-blur px-3 py-1.5 rounded-full">
+          <span className="text-yellow-400 text-sm">🪙</span>
+          <b className="text-sm" data-coin-chip>0</b>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => location.href = 'index.html?search=1'} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-lg active:scale-90">🔍</button>
+          <button onClick={() => location.href = 'jogos.html'} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-lg active:scale-90">🕹️</button>
+        </div>
+      </div>
+
+      {/* BALÃO CENTRAL */}
+      {video.bubble && (
+        <div className="absolute left-4 right-16 top-[22%] z-10 pointer-events-none">
+          <div className="film-bubble relative bg-white text-black font-black uppercase text-[15px] leading-tight px-4 py-3 rounded-xl w-fit max-w-full">
+            {video.bubble}
+          </div>
+        </div>
+      )}
+
+      {/* BARRA DIREITA */}
+      <div className="absolute right-2 bottom-36 z-20 flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-1">
+          <div className="relative">
+            <img src={video.avatar} alt="" onClick={() => location.href = 'index.html'} className="w-12 h-12 rounded-full border-2 border-white object-cover cursor-pointer active:scale-90" title="Ver perfil" />
+            {followed
+              ? <span onClick={() => onFollow(video.id)} className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] bg-gray-600 text-white font-bold px-1.5 py-0.5 rounded-full border border-white cursor-pointer">Seguindo</span>
+              : <span onClick={() => onFollow(video.id)} className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-full border border-white cursor-pointer">Seguir</span>}
+          </div>
+        </div>
+        <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90">
+          <span className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${likedAnim ? 'like-pop' : ''}`}>{video.liked ? '❤️' : '🤍'}</span>
+          <b className="text-[12px]">{fmtN(video.likes)}</b>
+        </button>
+        <button onClick={() => onComment(video)} className="flex flex-col items-center gap-1 active:scale-90">
+          <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl">💬</span>
+          <b className="text-[12px]">{fmtN(video.comments)}</b>
+        </button>
+        <button onClick={() => onShare(video)} className="flex flex-col items-center gap-1 active:scale-90">
+          <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl">↗️</span>
+          <b className="text-[12px]">{fmtN(video.shares)}</b>
+        </button>
+        <button onClick={() => onSave(video.id)} className="flex flex-col items-center gap-1 active:scale-90">
+          <span className="w-12 h-12 rounded-full flex items-center justify-center text-2xl">{video.saved ? '🔖' : '📑'}</span>
+          <b className="text-[12px]">Salvar</b>
+        </button>
+      </div>
+
+      {/* RODAPÉ */}
+      <div className="absolute left-3 right-16 bottom-24 z-20">
+        <h2 className="font-black text-lg leading-tight">{video.title}</h2>
+        <p className="text-white/85 text-[13px] mt-0.5">{video.caption}</p>
+        <p className="text-white/70 text-[12px] mt-0.5">{video.hashtag}</p>
+        <div className="flex items-center gap-1.5 mt-2 text-[11px] font-bold text-white/90">
+          <span className="text-yellow-400">🎬</span> {video.footerTag} · <span className="text-purplex">#{video.tag}</span>
+        </div>
+      </div>
+
+      {/* BARRA DE COMENTÁRIO */}
+      <div className="absolute left-0 right-0 bottom-0 z-20 p-3" style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+        <button onClick={() => onComment(video)} className="w-full flex items-center gap-2 bg-white/12 backdrop-blur border border-white/15 rounded-full px-4 py-2.5 text-left text-white/70 text-[13px]">
+          💬 Deixe um comentário carinhoso
+          <span className="ml-auto text-base">😍😂🔥👏❤️</span>
+        </button>
+      </div>
+
+      {!playing && <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"><span className="text-6xl opacity-80">▶️</span></div>}
+    </div>
+  );
+}
+
+function CommentSheet({ video, onClose }) {
+  const [text, setText] = useState('');
+  const [list, setList] = useState(() => loadLS('vibe_comments', {})[video.id] || []);
+  const send = () => {
+    const t = text.trim();
+    if (!t) return;
+    const all = loadLS('vibe_comments', {});
+    const arr = all[video.id] || [];
+    arr.unshift({ id: Date.now(), user: 'Você', text: t, at: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
+    all[video.id] = arr;
+    saveLS('vibe_comments', all);
+    setList(arr);
+    setText('');
+    toast('💬 Comentário enviado!');
+  };
+  const quick = ['😍', '😂', '🔥', '👏', '❤️', '😘'];
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60" onClick={onClose}>
+      <div className="absolute bottom-0 left-0 right-0 bg-vg rounded-t-3xl p-4 sheet" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+        <h3 className="font-bold text-lg mb-2">💬 {video.title}</h3>
+        <div className="max-h-52 overflow-y-auto mb-3 space-y-2">
+          {list.length === 0 && <p className="text-white/40 text-sm text-center py-4">Seja o primeiro a comentar 🥰</p>}
+          {list.map(c => (
+            <div key={c.id} className="bg-card rounded-2xl px-3 py-2">
+              <b className="text-purplex text-[13px]">{c.user}</b>
+              <p className="text-sm">{c.text}</p>
+              <small className="text-white/40 text-[10px]">{c.at}</small>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{quick.map(e => <button key={e} onClick={() => setText(t => t + e)} className="px-1">{e}</button>)}</span>
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
+            className="flex-1 bg-card border border-white/15 rounded-full px-4 py-3 text-sm outline-none focus:border-purplex"
+            placeholder="Deixe um comentário carinhoso…" maxLength="200" />
+          <button onClick={send} className="bg-purplex text-white font-bold rounded-full px-5 py-3 active:scale-95">➤</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState('home');
+  const [active, setActive] = useState(0);
+  const [followMap, setFollowMap] = useState(() => loadLS('vibe_feed_follows', {}));
+  const [comments, setComments] = useState(() => loadLS('vibe_comments', {}));
+  const [commentFor, setCommentFor] = useState(null);
+  const feedRef = useRef(null);
+
+  const videos = useMemo(() => {
+    const list = BASE_VIDEOS.map(v => ({
+      ...v,
+      liked: loadLS('vibe_feed_likes', {})[v.id] === true,
+      saved: loadLS('vibe_feed_saved', {})[v.id] === true,
+      comments: (v.comments || 0) + (comments[v.id] || []).length
+    }));
+    if (tab === 'alta') return [...list].sort((a, b) => b.likes - a.likes);
+    if (tab === 'novidades') return [...list].sort((a, b) => (a.id.startsWith('f') ? 1 : a.id.startsWith('d') ? 0 : -1));
+    if (tab === 'minha') {
+      const saved = loadLS('vibe_feed_saved', {});
+      const favs = list.filter(v => saved[v.id]);
+      if (!favs.length) toast('Nenhum salvo ainda — toque em 📑 para salvar');
+      return favs.length ? favs : list;
+    }
+    return list;
+  }, [tab, comments]);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(en => {
+        if (en.isIntersecting) {
+          const idx = [...feedRef.current.children].indexOf(en.target);
+          if (idx >= 0) setActive(idx);
+        }
+      });
+    }, { threshold: 0.65 });
+    const slides = feedRef.current ? feedRef.current.children : [];
+    Array.from(slides).forEach(s => obs.observe(s));
+    return () => obs.disconnect();
+  }, [videos.length]);
+
+  const next = useCallback(() => {
+    setActive(a => {
+      const n = Math.min(a + 1, videos.length - 1);
+      if (n > a && feedRef.current && feedRef.current.children[n]) feedRef.current.children[n].scrollIntoView({ behavior: 'smooth' });
+      return n;
+    });
+  }, [videos.length]);
+
+  const like = (id) => {
+    const all = loadLS('vibe_feed_likes', {});
+    all[id] = !all[id];
+    saveLS('vibe_feed_likes', all);
+    setComments(c => c); // força re-render dos contadores
+    toast(all[id] ? '❤️ Curtiu!' : 'Curtida removida');
+  };
+  const saveV = (id) => {
+    const all = loadLS('vibe_feed_saved', {});
+    all[id] = !all[id];
+    saveLS('vibe_feed_saved', all);
+    toast(all[id] ? '🔖 Salvo!' : 'Removido dos salvos');
+  };
+  const follow = (id) => {
+    const all = { ...followMap };
+    all[id] = !all[id];
+    setFollowMap(all);
+    saveLS('vibe_feed_follows', all);
+    toast(all[id] ? '✅ Seguindo!' : 'Deixou de seguir');
+  };
+  const share = async (v) => {
+    const data = { title: v.title, text: v.caption + ' ' + v.hashtag + ' — VibeDrama', url: location.href };
+    try { if (navigator.share) { await navigator.share(data); return; } } catch (e) {}
+    try { await navigator.clipboard.writeText(location.href); toast('🔗 Link copiado!'); } catch (e) { toast('↗️ Compartilhar'); }
+  };
+
+  return (
+    <div className="h-full w-full">
+      {/* FILTROS */}
+      <div className="absolute top-16 left-0 right-0 z-30 flex justify-center gap-2 px-2">
+        {[['home', 'Início'], ['alta', 'Em Alta'], ['novidades', 'Lançamentos'], ['minha', 'Minha Área']].map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)}
+            className={`px-4 py-1.5 rounded-full text-[12.5px] font-bold transition ${tab === k ? 'bg-purplex text-white' : 'bg-black/35 text-white/75 backdrop-blur'}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div ref={feedRef} className="snap-feed h-full w-full overflow-y-scroll">
+        {videos.map((v, i) => (
+          <Slide key={v.id} video={v} active={i === active} onEnded={next} loopLast={i === videos.length - 1}
+            onLike={like} onSave={saveV} onFollow={follow} onShare={share}
+            onComment={setCommentFor} followMap={followMap} />
+        ))}
+      </div>
+
+      {commentFor && <CommentSheet video={commentFor} onClose={() => setCommentFor(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+window.addEventListener('load', () => window.VS_Coins && window.VS_Coins.paintChips());
+</script>
+</body>
+</html>

@@ -313,3 +313,32 @@ curl https://integrate-typically-taste-hypothesis.trycloudflare.com/api/drama
 - **Privacidade**: o VibeGuard nunca acessa mensagens privadas; usa apenas dados necessários para segurança.
 - **Painel Admin**: nova aba "🤖 VibeGuard AI" com estatísticas, fila priorizada, flags, ações e chat da equipe (rotas também montadas em `${ADMIN_ROUTE}/api/vibeguard/*`).
 
+
+## 🎭 VibeDrama — Feed Vertical estilo TikTok/Kwai
+
+- **`/drama-feed.html`**: feed vertical infinito com scroll-snap (1 vídeo por tela), autoplay + mute, e ao terminar o vídeo já chama o próximo automaticamente.
+- **Barra direita fixa**: avatar com botão Seguir, Curtir (❤️ com animação), Comentar (sheet local), Compartilhar e Salvar — tudo persistido no `localStorage`.
+- **Filtros no topo**: Início, Em Alta, Lançamentos, Minha Área. Vídeos de exemplo em `frontend/data/videos.js` (memes de guaxinim, doramas e "O Farol da Virada"), sem chamadas externas à API (zero erro "200 não é JSON").
+- **Recompensa**: assistir dramas no feed dá moedas (3 dramas/dia = +30) via `js/coins.js`.
+
+## 🕹️ Vibe Games — Mini-games com moedas
+
+- **`/jogos.html`**: 5 mini-jogos 100% locais (canvas/SVG): Moto Rush, Roleta de Dinheiro (moeda virtual), Gira e Ganhe, Combina Frutas e Fill Up Fridge. Ganhe **+20 moedas** ao terminar cada partida (`gameReward`).
+- Layout igual ao print: filtros, "Jogados Recentemente", "Recomendação" com "35.7 mil Online" e rodapé fixo Início/Jogo/Criar/Mensagens/Perfil.
+
+## 🪙 Economia local (moedas + Saque PIX)
+
+- **`/carteira.html`**: saldo em moedas, tarefas (check-in diário +50, assistir 3 dramas +30, jogar 1 jogo +20, convidar +100), loja de pacotes (100=R$1,90 · 550=R$8,90 · 1200=R$17,90) e **Saque PIX** (mínimo 1.000 moedas = R$10) — tudo em `localStorage`, sem chamadas de rede.
+- **`/painel-admin.html`**: painel local que aprova/rejeita saques PIX (rejeição estorna moedas) e compras de moedas (aprovação credita saldo). Pedidos também ficam visíveis no painel real do servidor.
+- **Chip de moedas 🪙** no header do site e nas páginas novas (atualizado via `VS_Coins.paintChips()`).
+
+## 🔒 Desbloqueio pago de episódios (VibeDrama)
+
+- EP 1 é **grátis**; EP ≥ 2 aparece com **cadeado 🔒** na listagem.
+- Ao tocar em um episódio bloqueado: modal com "Assistir anúncio +10 moedas" (limite de 10/dia), "Pagar 100 moedas" e "Comprar moedas" (loja PIX).
+- Progresso salvo em `localStorage` (`unlockedEpisodes`), com segurança dupla no player.
+
+## ✨ VibeAI Creator — Estilos atualizados
+
+- Estilos de geração: **Animação, Cinemático, Trailer, Shorts, Drama, Meme** (removido "Realista").
+- **`/meme-editor.html`**: abas "✨ VibeAI Creator" / "🎨 Meme Editor" — sobe vídeo ou escolhe amostra, textos topo/baixo, fonte, cor, preview 9:16 ao vivo, exporta WebM com texto queimado via canvas e salva no feed (com fallback local).

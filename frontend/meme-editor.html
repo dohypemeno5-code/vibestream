@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>VibeStream — Meme Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800;900&family=Oswald:wght@700&family=Comic+Neue:wght@700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0a0a0f; --card:#1a1a23; --card2:#232330; --border:#2a2a38; --purple:#8b5cf6; --text:#f2f2fa; --muted:#9a9ab0; }
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Poppins',system-ui,sans-serif; min-height:100vh; padding-bottom:20px; }
+.wrap { max-width:520px; margin:0 auto; padding:14px; }
+header { position:sticky; top:0; z-index:30; background:rgba(10,10,15,.94); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+.head-in { max-width:520px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; }
+.logo { font-size:18px; font-weight:900; background:linear-gradient(135deg,#8b5cf6,#4cc9f0); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.coin-chip { display:flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--border); padding:6px 12px; border-radius:999px; font-size:13px; font-weight:800; cursor:pointer; }
+.coin-chip span { color:#ffc700; }
+.tabs { display:flex; gap:8px; padding:10px 14px; }
+.tabs button { flex:1; border:1px solid var(--border); background:var(--card); color:var(--muted); border-radius:12px; padding:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+.tabs button.active { background:var(--purple); border-color:var(--purple); color:#fff; }
+.section { margin-top:14px; }
+.sec-title { font-size:13px; font-weight:800; margin-bottom:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+.source-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none; }
+.source-row::-webkit-scrollbar { display:none; }
+.src-card { flex:0 0 96px; text-align:center; cursor:pointer; }
+.src-card .th { height:64px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:30px; background:var(--card2); border:2px solid var(--border); overflow:hidden; }
+.src-card.active .th { border-color:var(--purple); }
+.src-card small { font-size:10px; color:var(--muted); }
+.upload-btn { width:100%; margin-top:10px; border:2px dashed var(--border); background:var(--card); color:var(--muted); border-radius:14px; padding:14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+.field { margin-top:10px; }
+.field label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:5px; }
+input[type=text], select { width:100%; background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:12px; padding:11px 12px; font-size:14px; outline:none; font-family:inherit; }
+input[type=text]:focus, select:focus { border-color:var(--purple); }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.color-row { display:flex; gap:10px; align-items:center; }
+input[type=color] { width:52px; height:42px; border:1px solid var(--border); border-radius:10px; background:var(--card2); cursor:pointer; }
+input[type=range] { width:100%; accent-color:var(--purple); }
+/* PREVIEW 9:16 */
+.preview-shell { position:relative; width:100%; max-width:340px; margin:16px auto; aspect-ratio:9/16; background:#000; border-radius:20px; overflow:hidden; border:1px solid var(--border); box-shadow:0 16px 40px rgba(0,0,0,.5); }
+.preview-shell video { width:100%; height:100%; object-fit:cover; }
+.meme-text { position:absolute; left:8px; right:8px; text-align:center; font-weight:900; text-transform:uppercase; text-shadow:3px 3px 0 #000, -3px 3px 0 #000, 3px -3px 0 #000, -3px -3px 0 #000, 0 0 14px rgba(0,0,0,.7); line-height:1.15; word-break:break-word; }
+.meme-text.top { top:18px; }
+.meme-text.bottom { bottom:18px; }
+.preview-badge { position:absolute; top:10px; left:10px; background:rgba(139,92,246,.9); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:999px; }
+.btn-gen { width:100%; border:0; border-radius:14px; padding:15px; background:linear-gradient(135deg,#8b5cf6,#06b6d4); color:#fff; font-weight:900; font-size:15px; cursor:pointer; font-family:inherit; box-shadow:0 10px 26px rgba(139,92,246,.4); }
+.btn-gen:active { transform:scale(.98); }
+.btn-gen:disabled { opacity:.5; }
+.progress { display:none; margin-top:12px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+.progress .bar { height:8px; border-radius:99px; background:#2b2b3c; overflow:hidden; }
+.progress .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,#8b5cf6,#4cc9f0); transition:width .2s; }
+.progress p { font-size:12px; color:var(--muted); margin-top:8px; text-align:center; }
+.result { margin-top:14px; text-align:center; }
+.result video { width:100%; max-width:340px; border-radius:16px; background:#000; }
+.result .acts { display:flex; gap:8px; margin-top:10px; }
+.result .acts a, .result .acts button { flex:1; text-align:center; border:0; border-radius:12px; padding:12px; font-weight:800; font-size:13px; cursor:pointer; font-family:inherit; text-decoration:none; }
+.dl { background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; }
+.feed { background:linear-gradient(135deg,#8b5cf6,#06b6d4); color:#fff; }
+.mine { margin-top:14px; }
+.mine-item { display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:10px; margin-bottom:8px; }
+.mine-item .th { width:52px; height:52px; border-radius:10px; object-fit:cover; background:var(--card2); flex-shrink:0; }
+.mine-item b { font-size:12.5px; display:block; }
+.mine-item small { color:var(--muted); font-size:10.5px; }
+.toast { position:fixed; left:50%; bottom:40px; transform:translateX(-50%); z-index:80; background:var(--purple); color:#fff; font-weight:700; font-size:13px; padding:10px 18px; border-radius:999px; box-shadow:0 8px 24px rgba(139,92,246,.5); animation:tin .3s; white-space:nowrap; }
+@keyframes tin { from { opacity:0; transform:translateX(-50%) translateY(12px); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <button onclick="location.href='index.html'" style="background:none;border:0;color:#fff;font-size:20px;cursor:pointer">←</button>
+    <span class="logo">🎨 Meme Editor</span>
+    <button class="coin-chip" onclick="location.href='carteira.html'">🪙 <span data-coin-chip>0</span></button>
+  </div>
+  <div class="tabs">
+    <button onclick="location.href='index.html?page=AICreator'">✨ VibeAI Creator</button>
+    <button class="active">🎨 Meme Editor</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="section">
+    <div class="sec-title">1️⃣ Escolha o vídeo</div>
+    <div class="source-row" id="sources"></div>
+    <button class="upload-btn" onclick="document.getElementById('fileUp').click()">📤 Enviar vídeo do aparelho</button>
+    <input type="file" id="fileUp" accept="video/*" hidden>
+  </div>
+
+  <div class="preview-shell" id="previewShell">
+    <video id="previewVideo" muted loop playsinline></video>
+    <div class="preview-badge">🎬 PREVIEW 9:16</div>
+    <div class="meme-text top" id="textTop">TEXTO TOPO</div>
+    <div class="meme-text bottom" id="textBottom">TEXTO BAIXO</div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">2️⃣ Textos do meme</div>
+    <div class="field"><label>Texto de cima</label><input type="text" id="inTop" value="ELE ACHA QUE SE DEU BEM" maxlength="60"></div>
+    <div class="field"><label>Texto de baixo</label><input type="text" id="inBottom" value="FICANDO COM ESSA MULHER KKK" maxlength="60"></div>
+    <div class="row2">
+      <div class="field">
+        <label>Fonte</label>
+        <select id="inFont">
+          <option value="'Archivo Black',sans-serif">Impact / Archivo</option>
+          <option value="'Poppins',sans-serif">Poppins</option>
+          <option value="'Oswald',sans-serif">Oswald</option>
+          <option value="'Comic Neue',cursive">Comic</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Cor</label>
+        <div class="color-row"><input type="color" id="inColor" value="#ffffff"><span style="font-size:12px;color:var(--muted)">borda preta</span></div>
+      </div>
+    </div>
+    <div class="field"><label>Tamanho: <span id="sizeLbl">34</span>px</label><input type="range" id="inSize" min="16" max="56" value="34"></div>
+  </div>
+
+  <button class="btn-gen" id="btnGen" onclick="generateMeme()">🎬 Gerar Meme (baixa vídeo)</button>
+
+  <div class="progress" id="progressBox"><div class="bar"><i id="progressFill"></i></div><p id="progressText">Preparando…</p></div>
+  <div class="result" id="resultBox"></div>
+
+  <div class="mine" id="mineBox"></div>
+</div>
+
+<script src="js/coins.js"></script>
+<script>
+const SAMPLES = [
+  { id:'g1', label:'Guaxinim', icon:'🦝', url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' },
+  { id:'d1', label:'Dorama', icon:'🎬', url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4' },
+  { id:'f1', label:'Farol', icon:'🌊', url:'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4' }
+];
+const previewVideo = document.getElementById('previewVideo');
+let currentSource = SAMPLES[0].url;
+
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+
+function renderSources(){
+  const box = document.getElementById('sources');
+  box.innerHTML = SAMPLES.map(s => `
+    <div class="src-card ${s.url === currentSource ? 'active' : ''}" data-url="${s.url}" onclick="pickSource('${s.url}')">
+      <div class="th">${s.icon}</div>
+      <small>${s.label}</small>
+    </div>`).join('');
+}
+function pickSource(url){
+  currentSource = url;
+  previewVideo.src = url;
+  previewVideo.play().catch(()=>{});
+  renderSources();
+}
+document.getElementById('fileUp').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  if (!/video\//.test(f.type)) { toast('Envie um arquivo de vídeo'); return; }
+  if (f.size > 40*1024*1024) { toast('Vídeo muito grande (máx 40MB)'); return; }
+  currentSource = URL.createObjectURL(f);
+  previewVideo.src = currentSource;
+  previewVideo.play().catch(()=>{});
+  renderSources();
+});
+
+['inTop','inBottom','inFont','inColor','inSize'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => updateTexts());
+});
+document.getElementById('inSize').addEventListener('input', () => { document.getElementById('sizeLbl').textContent = document.getElementById('inSize').value; });
+
+function updateTexts(){
+  const font = document.getElementById('inFont').value;
+  const color = document.getElementById('inColor').value;
+  const size = document.getElementById('inSize').value + 'px';
+  const top = document.getElementById('textTop'), bottom = document.getElementById('textBottom');
+  top.textContent = document.getElementById('inTop').value || ' ';
+  bottom.textContent = document.getElementById('inBottom').value || ' ';
+  top.style.fontFamily = bottom.style.fontFamily = font;
+  top.style.color = bottom.style.color = color;
+  top.style.fontSize = bottom.style.fontSize = size;
+}
+
+function setProgress(p, txt){
+  document.getElementById('progressBox').style.display = 'block';
+  document.getElementById('progressFill').style.width = p + '%';
+  document.getElementById('progressText').textContent = txt;
+}
+
+async function generateMeme(){
+  const btn = document.getElementById('btnGen');
+  btn.disabled = true;
+  const resultBox = document.getElementById('resultBox');
+  resultBox.innerHTML = '';
+  try {
+    setProgress(5, 'Preparando vídeo…');
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.src = currentSource;
+    video.muted = true;
+    await new Promise((res, rej) => { video.onloadeddata = res; video.onerror = () => rej(new Error('Não foi possível carregar o vídeo')); video.load(); setTimeout(() => rej(new Error('Timeout ao carregar o vídeo')), 12000); });
+
+    const W = 540, H = 960;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const stream = canvas.captureStream(30);
+    const mime = (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) ? 'video/webm;codecs=vp9' : 'video/webm';
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 1800000 });
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const fontFam = document.getElementById('inFont').value;
+    const color = document.getElementById('inColor').value;
+    const size = parseInt(document.getElementById('inSize').value, 10);
+    const topTxt = (document.getElementById('inTop').value || '').toUpperCase();
+    const bottomTxt = (document.getElementById('inBottom').value || '').toUpperCase();
+    const draw = (t) => {
+      // fundo preto com vídeo cover
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      const vw = video.videoWidth || W, vh = video.videoHeight || H;
+      const scale = Math.max(W / vw, H / vh);
+      const dw = vw * scale, dh = vh * scale;
+      ctx.drawImage(video, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = 'center';
+      ctx.font = '900 ' + size + 'px ' + fontFam;
+      ctx.lineWidth = Math.max(4, size * 0.14);
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#000';
+      ctx.fillStyle = color;
+      wrapDraw(ctx, topTxt, W / 2, 30 + size, W - 24, size + 8);
+      wrapDraw(ctx, bottomTxt, W / 2, H - 30 - size, W - 24, size + 8);
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.font = '700 22px Poppins, sans-serif';
+      ctx.fillText('✦ VibeStream', W / 2, H - 12);
+    };
+    function wrapDraw(ctx, txt, x, y, maxW, lineH){
+      if (!txt) return;
+      const words = txt.split(' ');
+      let line = '', ly = y;
+      for (const w of words){
+        const test = line ? line + ' ' + w : w;
+        if (ctx.measureText(test).width > maxW && line){ ctx.strokeText(line, x, ly); ctx.fillText(line, x, ly); line = w; ly += lineH; }
+        else line = test;
+      }
+      ctx.strokeText(line, x, ly); ctx.fillText(line, x, ly);
+    }
+    video.currentTime = 0;
+    video.play().catch(()=>{});
+    const dur = Math.min(video.duration || 8, 10);
+    const totalFrames = Math.round(dur * 30);
+    let frame = 0;
+    rec.start();
+    setProgress(15, 'Renderizando frames… 0%');
+    await new Promise((resolve, reject) => {
+      const step = () => {
+        if (frame > totalFrames){ rec.stop(); resolve(); return; }
+        try { video.currentTime = frame / 30; draw(frame / totalFrames); } catch (e) { reject(e); return; }
+        frame++;
+        if (frame % 9 === 0) setProgress(15 + Math.round((frame / totalFrames) * 65), 'Renderizando frames… ' + Math.round(frame / totalFrames * 100) + '%');
+        requestAnimationFrame(step);
+      };
+      step();
+    });
+    setProgress(85, 'Fechando arquivo…');
+    const blob = await new Promise((resolve, reject) => {
+      rec.onstop = () => {
+        const b = new Blob(chunks, { type: 'video/webm' });
+        if (!b || b.size < 2048) return reject(new Error('Vídeo gerado vazio'));
+        resolve(b);
+      };
+      setTimeout(() => { try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }, (dur * 1000) + 5000);
+    });
+    setProgress(95, 'Salvando…');
+    const url = URL.createObjectURL(blob);
+    // salva local (Feed local do Meme Editor)
+    const memes = JSON.parse(localStorage.getItem('vibe_memes') || '[]');
+    memes.unshift({ id: 'm' + Date.now(), title: topTxt + ' — ' + bottomTxt, at: new Date().toISOString(), url, sizeKB: Math.round(blob.size / 1024) });
+    localStorage.setItem('vibe_memes', JSON.stringify(memes.slice(0, 30)));
+    // tenta publicar no feed do VibeStream (fallback local se a API não responder)
+    let pub = false;
+    try {
+      const r = await fetch((window.__VITE_API_URL || '') + '/api/posts', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: topTxt + ' ' + bottomTxt + ' #memevibe', mediaType: 'video', mediaUrl: '' })
+      });
+      const ct = r.headers.get('content-type') || '';
+      if (ct.includes('application/json')) { const d = await r.json(); pub = !!d.post; }
+    } catch (e) { pub = false; }
+    setProgress(100, 'Pronto!');
+    setTimeout(() => { document.getElementById('progressBox').style.display = 'none'; }, 600);
+    resultBox.innerHTML = `
+      <video src="${url}" controls playsinline style="width:100%;max-width:340px;border-radius:16px;background:#000"></video>
+      <div class="acts">
+        <a class="dl" href="${url}" download="vibememe.webm">⬇️ Baixar</a>
+        <button class="feed" onclick="saveLocalFeed()">📤 Salvar no Feed</button>
+      </div>
+      <p style="color:var(--muted);font-size:11px;margin-top:8px">${pub ? '✅ Publicado no feed do VibeStream!' : '💾 Salvo localmente (sem conexão com a API). Abra "Meus Memes" abaixo.'}</p>`;
+    renderMine();
+    toast('🎬 Meme gerado!');
+  } catch (e) {
+    toast('❌ ' + (e.message || 'Falha ao gerar o meme'));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function saveLocalFeed(){
+  toast('📤 Salvo na aba "Meus Memes" — publique quando o servidor estiver online');
+}
+
+function renderMine(){
+  const box = document.getElementById('mineBox');
+  const memes = JSON.parse(localStorage.getItem('vibe_memes') || '[]');
+  if (!memes.length){ box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="sec-title">📂 Meus Memes (${memes.length})</div>` + memes.map(m => `
+    <div class="mine-item">
+      <video class="th" src="${m.url}" muted playsinline></video>
+      <div style="flex:1;min-width:0"><b>${m.title}</b><small>${m.sizeKB} KB · ${new Date(m.at).toLocaleString('pt-BR')}</small></div>
+    </div>`).join('');
+}
+renderMine();
+renderSources();
+updateTexts();
+</script>
+</body>
+</html>

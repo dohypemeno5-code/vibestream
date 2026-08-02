@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a10">
+<title>VibeStream — Jogos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0a0a10; --card:#1a1a23; --card2:#232330; --border:#2a2a38; --purple:#7c3aed; --orange:#ff8a00; --green:#22c55e; --text:#f2f2fa; --muted:#9a9ab0; }
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Poppins',system-ui,sans-serif; min-height:100vh; padding-bottom:84px; }
+.wrap { max-width:520px; margin:0 auto; padding:14px 14px 20px; }
+header { position:sticky; top:0; z-index:30; background:rgba(10,10,16,.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+.head-in { max-width:520px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; }
+.logo { font-size:19px; font-weight:900; background:linear-gradient(135deg,#7c3aed,#4cc9f0); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.coin-chip { display:flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--border); padding:6px 12px; border-radius:999px; font-size:13px; font-weight:800; cursor:pointer; }
+.coin-chip span { color:#ffc700; }
+.filters { display:flex; gap:8px; overflow-x:auto; padding:10px 14px; scrollbar-width:none; }
+.filters::-webkit-scrollbar { display:none; }
+.filters button { white-space:nowrap; border:1px solid var(--border); background:var(--card); color:var(--muted); border-radius:999px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; }
+.filters button.active { background:var(--purple); border-color:var(--purple); color:#fff; }
+.filters button.task { border-color:var(--orange); color:var(--orange); }
+.sec-title { font-size:15px; font-weight:800; margin:18px 2px 10px; display:flex; align-items:center; gap:8px; }
+.hrow { display:flex; gap:12px; overflow-x:auto; padding:4px 2px 10px; scrollbar-width:none; }
+.hrow::-webkit-scrollbar { display:none; }
+.game-card { flex:0 0 118px; background:var(--card); border:1px solid var(--border); border-radius:18px; overflow:hidden; cursor:pointer; transition:transform .15s; }
+.game-card:hover { transform:translateY(-3px); }
+.game-thumb { height:96px; display:flex; align-items:center; justify-content:center; font-size:44px; background:linear-gradient(160deg,#1e1e2b,#14141e); }
+.game-card b { display:block; font-size:12.5px; padding:8px 10px 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.game-card small { display:block; color:var(--muted); font-size:10px; padding:0 10px 10px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.big-card { background:var(--card); border:1px solid var(--border); border-radius:20px; overflow:hidden; cursor:pointer; position:relative; }
+.big-card .bc-thumb { height:150px; display:flex; align-items:center; justify-content:center; font-size:64px; background:linear-gradient(160deg,#241a3d,#14141e); }
+.big-card .bc-info { padding:12px; }
+.big-card b { font-size:15px; display:block; }
+.big-card small { color:var(--muted); font-size:11px; }
+.online { display:inline-block; background:rgba(34,197,94,.14); color:#5eea9a; border:1px solid rgba(34,197,94,.4); border-radius:999px; padding:3px 10px; font-size:10.5px; font-weight:700; margin-top:8px; }
+.play-btn { display:block; width:100%; margin-top:10px; border:0; border-radius:12px; padding:11px; background:linear-gradient(135deg,#7c3aed,#06b6d4); color:#fff; font-weight:800; font-size:13.5px; cursor:pointer; font-family:inherit; }
+.play-btn:active { transform:scale(.97); }
+.bottom-nav { position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; background:rgba(12,12,20,.96); backdrop-filter:blur(12px); border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom); }
+.bottom-nav button { flex:1; background:none; border:0; color:var(--muted); font-size:10px; font-weight:700; padding:9px 0 7px; cursor:pointer; font-family:inherit; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.bottom-nav button .ic { font-size:19px; }
+.bottom-nav button.active { color:#fff; }
+.bottom-nav button .badge { background:#ff3d5a; color:#fff; border-radius:999px; font-size:9px; padding:1px 6px; margin-left:2px; }
+.modal { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.8); padding:12px; }
+.modal.open { display:flex; }
+.modal-box { width:100%; max-width:400px; background:var(--card); border:1px solid var(--border); border-radius:22px; overflow:hidden; }
+.modal-head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); }
+.modal-head b { font-size:15px; }
+.modal-head button { background:var(--card2); border:1px solid var(--border); color:#fff; width:32px; height:32px; border-radius:10px; cursor:pointer; font-size:14px; }
+#gameCanvas { width:100%; display:block; background:#0d0d16; touch-action:none; }
+.game-result { text-align:center; padding:16px; }
+.game-result h3 { font-size:20px; }
+.game-result p { color:var(--muted); font-size:13px; margin:6px 0 12px; }
+.toast { position:fixed; left:50%; bottom:110px; transform:translateX(-50%); z-index:80; background:var(--purple); color:#fff; font-weight:700; font-size:13px; padding:10px 18px; border-radius:999px; box-shadow:0 8px 24px rgba(124,58,237,.5); animation:tin .3s; white-space:nowrap; }
+@keyframes tin { from { opacity:0; transform:translateX(-50%) translateY(12px); } }
+.hint { color:var(--muted); font-size:11.5px; text-align:center; padding:10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <span class="logo">🕹️ VibeGames</span>
+    <button class="coin-chip" onclick="location.href='carteira.html'">🪙 <span data-coin-chip>0</span> <b style="color:#8b5cf6;font-size:11px">Carteira</b></button>
+  </div>
+  <div class="filters">
+    <button class="active">Jogo</button>
+    <button class="task">📋 Tarefa</button>
+    <button onclick="location.href='drama-feed.html'">⚽ Joga Bola</button>
+    <button>🎮 Gêneros</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="sec-title">🕹️ Jogados Recentemente</div>
+  <div class="hrow">
+    <div class="game-card" onclick="openGame('moto')"><div class="game-thumb">🏍️</div><b>Moto Rush</b><small>Desvie do trânsito</small></div>
+    <div class="game-card" onclick="openGame('roleta')"><div class="game-thumb">🎡</div><b>Roleta de Dinheiro</b><small>Moeda virtual</small></div>
+    <div class="game-card" onclick="openGame('gira')"><div class="game-thumb">🎰</div><b>Gira e Ganhe</b><small>3 iguais = +</small></div>
+    <div class="game-card" onclick="openGame('frutas')"><div class="game-thumb">🍓</div><b>Combina Frutas</b><small>Jogo da memória</small></div>
+  </div>
+
+  <div class="sec-title">🔥 Recomendação</div>
+  <div class="big-card" onclick="openGame('fridge')">
+    <div class="bc-thumb">🧊</div>
+    <div class="bc-info">
+      <b>Fill Up Fridge</b>
+      <small>Complete a geladeira antes do tempo acabar</small>
+      <span class="online">🟢 35.7 mil Online</span>
+      <button class="play-btn" onclick="event.stopPropagation();openGame('fridge')">▶ Jogar</button>
+    </div>
+  </div>
+
+  <div class="sec-title">🕹️ Jogos Offline</div>
+  <div class="grid2">
+    <div class="big-card" onclick="openGame('moto')">
+      <div class="bc-thumb">🏍️</div>
+      <div class="bc-info">
+        <b>Moto Rush</b>
+        <small>Corrida na cidade</small>
+        <span class="online">🟢 12.4 mil Online</span>
+        <button class="play-btn" onclick="event.stopPropagation();openGame('moto')">▶ Jogar</button>
+      </div>
+    </div>
+    <div class="big-card" onclick="openGame('roleta')">
+      <div class="bc-thumb">🎡</div>
+      <div class="bc-info">
+        <b>Roleta de Dinheiro</b>
+        <small>Gire e ganhe moedas</small>
+        <span class="online">🟢 8.9 mil Online</span>
+        <button class="play-btn" onclick="event.stopPropagation();openGame('roleta')">▶ Jogar</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">🎮 Rode a roleta e jogue com a MOEDA VIRTUAL da plataforma — sem aposta real, sem dinheiro.</p>
+</div>
+
+<nav class="bottom-nav">
+  <button onclick="location.href='index.html'"><span class="ic">🏠</span>Início</button>
+  <button class="active"><span class="ic">🎮</span>Jogo</button>
+  <button onclick="location.href='meme-editor.html'"><span class="ic">➕</span>Criar</button>
+  <button onclick="location.href='index.html?page=Chat'"><span class="ic">💬</span>Mensagens<span class="badge">99+</span></button>
+  <button onclick="location.href='index.html?page=Profile'"><span class="ic">👤</span>Perfil</button>
+</nav>
+
+<div class="modal" id="gameModal">
+  <div class="modal-box">
+    <div class="modal-head"><b id="gmTitle">Jogo</b><button onclick="closeGame()">✕</button></div>
+    <canvas id="gameCanvas" width="400" height="560"></canvas>
+    <div id="gameResult"></div>
+    <div class="hint" id="gmHint"></div>
+  </div>
+</div>
+
+<script src="js/coins.js"></script>
+<script>
+const G = { name:'', id:'', coinsGiven:false, raf:null, over:false };
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const MODAL = document.getElementById('gameModal');
+
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+function fmt(n){ return Number(n||0).toLocaleString('pt-BR'); }
+
+function openGame(id){
+  const names = { moto:'Moto Rush', roleta:'Roleta de Dinheiro', gira:'Gira e Ganhe', frutas:'Combina Frutas', fridge:'Fill Up Fridge' };
+  G.name = names[id] || id; G.id = id; G.coinsGiven = false; G.over = false;
+  document.getElementById('gmTitle').textContent = G.name;
+  document.getElementById('gameResult').innerHTML = '';
+  MODAL.classList.add('open');
+  cancelAnimationFrame(G.raf);
+  startGame(id);
+}
+
+function closeGame(){
+  MODAL.classList.remove('open');
+  G.over = true;
+  cancelAnimationFrame(G.raf);
+}
+
+function finishGame(win, msg){
+  if (G.over) return;
+  G.over = true;
+  cancelAnimationFrame(G.raf);
+  if (!G.coinsGiven){
+    G.coinsGiven = true;
+    const bal = window.VS_Coins.gameReward();
+    toast('🪙 +20 moedas por jogar! Saldo: ' + fmt(bal));
+  }
+  document.getElementById('gameResult').innerHTML =
+    `<div class="game-result"><h3>${win ? '🏆 Você venceu!' : '🎮 Fim de jogo'}</h3><p>${msg}</p>
+     <button class="play-btn" onclick="openGame('${G.id}')">🔄 Jogar de novo</button></div>`;
+}
+
+// ============ MOTO RUSH ============
+function startGame(id){ (starters[id] || starters.moto)(); }
+const starters = { moto: gameMoto, roleta: gameRoleta, gira: gameGira, frutas: gameFrutas, fridge: gameFridge };
+
+function gameMoto(){
+  document.getElementById('gmHint').textContent = '⬅️➡️ toque nos lados para desviar. Sobreviva 25s!';
+  const bike = { x: W/2 - 22, y: H-110, w: 44, h: 74 };
+  const cars = [];
+  let speed = 2.2, t = 0, score = 0, done = false;
+  const keys = { left:false, right:false };
+  canvas.onpointerdown = e => {
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (W / r.width);
+    if (x < W/2) keys.left = true; else keys.right = true;
+  };
+  canvas.onpointerup = () => { keys.left = false; keys.right = false; };
+  const loop = () => {
+    if (done) return;
+    t += 1/60; speed = 2.2 + t*0.12; score += 1;
+    if (keys.left) bike.x -= 5.5;
+    if (keys.right) bike.x += 5.5;
+    bike.x = Math.max(6, Math.min(W-6-bike.w, bike.x));
+    if (Math.random() < 0.018 + t*0.0006) cars.push({ x: 10 + Math.random()*(W-70), y: -70, w: 46, h: 70 });
+    ctx.fillStyle = '#0d0d16'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = '#33334d'; ctx.lineWidth = 4;
+    for (let i=0;i<5;i++){ const ly = (i*90 + t*120) % (H+40); ctx.beginPath(); ctx.moveTo(W/2-120, ly-40); ctx.lineTo(W/2-120, ly+40); ctx.stroke(); ctx.beginPath(); ctx.moveTo(W/2+120, ly-40); ctx.lineTo(W/2+120, ly+40); ctx.stroke(); }
+    cars.forEach(c => { c.y += speed; ctx.fillStyle = '#ff3d5a'; ctx.beginPath(); ctx.roundRect(c.x,c.y,c.w,c.h,10); ctx.fill(); ctx.fillStyle='#ffd0d8'; ctx.fillRect(c.x+8,c.y+10,c.w-16,12); });
+    cars.forEach(c => { if (c.y < H && c.y+c.h > bike.y && c.x < bike.x+bike.w && c.x+c.w > bike.x){ done = true; finishGame(false, 'Bateu! Sobreviveu ' + Math.floor(t) + 's · ' + score + ' pts'); } });
+    ctx.fillStyle = '#7c3aed'; ctx.beginPath(); ctx.roundRect(bike.x,bike.y,bike.w,bike.h,14); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font='bold 22px sans-serif'; ctx.fillText('🏍️', bike.x+9, bike.y+48);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.fillText('⏱ ' + Math.max(0, 25-Math.floor(t)) + 's', 14, 30);
+    ctx.fillText('🪙 ' + fmt(window.VS_Coins.balance()), W-14, 30); ctx.textAlign = 'left';
+    if (t >= 25){ done = true; finishGame(true, 'Você sobreviveu 25 segundos!'); }
+    else G.raf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+// ============ ROLETA (moeda virtual) ============
+function gameRoleta(){
+  document.getElementById('gmHint').textContent = 'Gire e ganhe moedas VIRTUAIS (sem aposta real).';
+  const prizes = [5,10,20,2,15,8,12,4];
+  let angle = 0, spinning = false, reward = 0;
+  const draw = () => {
+    ctx.fillStyle = '#0d0d16'; ctx.fillRect(0,0,W,H);
+    const cx = W/2, cy = H/2-40, r = 150;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
+    prizes.forEach((p,i) => {
+      const a0 = i * Math.PI/4, a1 = a0 + Math.PI/4;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r,a0,a1); ctx.closePath();
+      ctx.fillStyle = i%2 ? '#7c3aed' : '#2a1b4d'; ctx.fill();
+      ctx.strokeStyle = '#0d0d16'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.save(); ctx.rotate(a0 + Math.PI/8);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+'+p, 70, 8); ctx.restore();
+    });
+    ctx.restore();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(cx, cy-r-18); ctx.lineTo(cx-12, cy-r-44); ctx.lineTo(cx+12, cy-r-44); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd400'; ctx.font='bold 16px sans-serif'; ctx.textAlign='center'; ctx.fillText('🪙', cx, cy+6);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.fillText(reward ? 'Ganhou +'+reward+' 🪙' : 'Toque para girar', cx, H-70);
+    G.raf = requestAnimationFrame(draw);
+  };
+  canvas.onpointerdown = () => {
+    if (spinning) return;
+    spinning = true; reward = 0;
+    const target = angle + Math.PI*4 + Math.random()*Math.PI*2;
+    const start = angle; const dur = 2200; const t0 = performance.now();
+    const spin = (now) => {
+      const p = Math.min(1, (now-t0)/dur);
+      angle = start + (target-start) * (1-Math.pow(1-p,3));
+      if (p < 1) G.raf = requestAnimationFrame(spin);
+      else {
+        spinning = false;
+        const idx = Math.floor(((angle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2) / (Math.PI/4));
+        reward = prizes[(8-idx)%8];
+        window.VS_Coins.add(reward, 'Roleta de Dinheiro (moeda virtual)');
+        toast('🎡 +'+reward+' moedas!');
+      }
+    };
+    requestAnimationFrame(spin);
+  };
+  draw();
+}
+
+// ============ GIRA E GANHE ============
+function gameGira(){
+  document.getElementById('gmHint').textContent = 'Gire os 3 e consiga iguais para ganhar +20.';
+  const emojis = ['🍒','🍋','⭐','💎','7️⃣'];
+  let reels = ['❓','❓','❓'], spinning = false;
+  const draw = () => {
+    ctx.fillStyle = '#0d0d16'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#fff'; ctx.font='bold 26px sans-serif'; ctx.textAlign='center'; ctx.fillText('🎰 Gira e Ganhe', W/2, 60);
+    reels.forEach((r,i) => {
+      ctx.fillStyle = '#1e1e2b'; ctx.beginPath(); ctx.roundRect(30+i*120, 160, 100, 130, 16); ctx.fill();
+      ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 64px sans-serif'; ctx.fillText(r, 80+i*120, 248);
+    });
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.fillText('Toque para girar', W/2, H-60);
+    G.raf = requestAnimationFrame(draw);
+  };
+  canvas.onpointerdown = () => {
+    if (spinning) return;
+    spinning = true;
+    const seq = [0,1,2].map(() => emojis[Math.floor(Math.random()*emojis.length)]);
+    let step = 0;
+    const spin = () => {
+      reels = reels.map((_,i) => i <= step ? emojis[Math.floor(Math.random()*emojis.length)] : '❓');
+      step++;
+      if (step < 3) setTimeout(spin, 350);
+      else {
+        reels = seq;
+        spinning = false;
+        const win = seq[0]===seq[1] && seq[1]===seq[2];
+        if (win){ window.VS_Coins.add(20,'Gira e Ganhe'); toast('🎰 3 iguais! +20 moedas'); }
+        else toast('Quase! Tente de novo');
+      }
+    };
+    spin();
+  };
+  draw();
+}
+
+// ============ COMBINA FRUTAS (memória) ============
+function gameFrutas(){
+  document.getElementById('gmHint').textContent = 'Encontre os pares de frutas!';
+  const fruits = ['🍎','🍌','🍇','🍓','🍉','🍍','🍎','🍌','🍇','🍓','🍉','🍍'];
+  for (let i=fruits.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [fruits[i],fruits[j]]=[fruits[j],fruits[i]]; }
+  const state = fruits.map((f,i)=>({ f, open:false, ok:false }));
+  let first = null, lock = false, found = 0;
+  const draw = () => {
+    ctx.fillStyle = '#0d0d16'; ctx.fillRect(0,0,W,H);
+    state.forEach((c,i) => {
+      const x = 14 + (i%4)*96, y = 60 + Math.floor(i/4)*100;
+      ctx.fillStyle = c.ok ? '#123a22' : c.open ? '#2a1b4d' : '#1e1e2b';
+      ctx.beginPath(); ctx.roundRect(x,y,84,88,14); ctx.fill();
+      ctx.strokeStyle = c.ok ? '#22c55e' : '#7c3aed'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 44px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(c.open || c.ok ? c.f : '❓', x+42, y+58);
+    });
+    ctx.fillStyle = '#fff'; ctx.font='bold 18px sans-serif'; ctx.fillText('Pares: '+found+'/6', W/2, H-40);
+    G.raf = requestAnimationFrame(draw);
+  };
+  canvas.onpointerdown = e => {
+    if (lock) return;
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (W/r.width), y = (e.clientY - r.top) * (H/r.height);
+    const i = Math.floor((y-60)/100)*4 + Math.floor(x/96);
+    if (i<0||i>=12) return;
+    const c = state[i];
+    if (c.open || c.ok || (first && first.i===i)) return;
+    c.open = true;
+    if (!first) first = { i, f:c.f };
+    else {
+      lock = true;
+      const a = first; first = null;
+      setTimeout(() => {
+        if (a.f === c.f){ state[a.i].ok = state[i].ok = true; found++; toast('✅ Par encontrado!'); if (found===6) finishGame(true,'Você encontrou todos os pares!'); }
+        else { state[a.i].open = state[i].open = false; }
+        lock = false;
+      }, 650);
+    }
+  };
+  draw();
+}
+
+// ============ FILL UP FRIDGE ============
+function gameFridge(){
+  document.getElementById('gmHint').textContent = 'Toque nos itens e depois na prateleira para encher a geladeira.';
+  const items = ['🍎','🥛','🧀','🥩','🍊','🥚'];
+  let shelf = [], sel = null, t = 0, done = false;
+  const loop = () => {
+    if (done) return;
+    t += 1/60;
+    ctx.fillStyle = '#0d0d16'; ctx.fillRect(0,0,W,H);
+    // geladeira
+    ctx.fillStyle = '#dbeafe'; ctx.beginPath(); ctx.roundRect(30,40,340,300,18); ctx.fill();
+    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 6; ctx.stroke();
+    ctx.fillStyle = '#0f172a'; ctx.font='bold 22px sans-serif'; ctx.textAlign='left'; ctx.fillText('🧊 Fridge', 50, 76);
+    // prateleiras
+    for (let i=0;i<4;i++){ ctx.fillStyle = 'rgba(15,23,42,.15)'; ctx.fillRect(40, 100+i*55, 320, 4); }
+    shelf.forEach((it, i) => {
+      const col = i % 4, row = Math.floor(i/4);
+      ctx.fillStyle='#fff'; ctx.font='bold 40px sans-serif'; ctx.fillText(it, 50+col*80, 135+row*55);
+    });
+    ctx.fillStyle = '#fff'; ctx.font='bold 18px sans-serif'; ctx.fillText('⏱ '+Math.max(0,30-Math.floor(t))+'s', W/2-20, 380); ctx.textAlign='center';
+    ctx.fillStyle = '#7c3aed'; ctx.font='bold 20px sans-serif'; ctx.fillText('Itens para colocar:', W/2, 420);
+    items.forEach((it, i) => {
+      const x = 30 + i*72;
+      ctx.fillStyle = '#1e1e2b'; ctx.beginPath(); ctx.roundRect(x, 440, 58, 58, 14); ctx.fill();
+      ctx.strokeStyle = sel === it ? '#ffc700' : '#2a2a38'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font='bold 34px sans-serif'; ctx.fillText(it, x+29, 482);
+    });
+    if (t >= 30){ done = true; finishGame(false, 'Tempo acabou — você encheu ' + shelf.length + '/6'); return; }
+    G.raf = requestAnimationFrame(loop);
+  };
+  canvas.onpointerdown = e => {
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (W/r.width), y = (e.clientY - r.top) * (H/r.height);
+    if (y > 430 && y < 510){
+      const i = Math.floor((x-30)/72);
+      if (i>=0 && i<6 && !shelf.includes(items[i])) sel = items[i];
+      return;
+    }
+    if (y > 40 && y < 340 && sel && shelf.length < 6){
+      shelf.push(sel); sel = null;
+      if (shelf.length === 6){ done = true; finishGame(true, 'Geladeira cheia! +20 moedas'); }
+    }
+  };
+  loop();
+}
+
+// roundRect helper
+if (!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){ this.moveTo(x+r,y); this.arcTo(x+w,y,x+w,y+h,r); this.arcTo(x+w,y+h,x,y+h,r); this.arcTo(x,y+h,x,y,r); this.arcTo(x,y,x+w,y,r); this.closePath(); };
+}
+</script>
+</body>
+</html>

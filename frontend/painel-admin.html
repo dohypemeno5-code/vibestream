@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a10">
+<title>VibeStream — Painel Admin (Economia)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0a0a10; --card:#1a1a23; --card2:#232330; --border:#2a2a38; --purple:#8b5cf6; --green:#22c55e; --red:#ff4d6d; --orange:#ff8a00; --text:#f2f2fa; --muted:#9a9ab0; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'Poppins',system-ui,sans-serif; min-height:100vh; padding:16px; }
+.wrap { max-width:860px; margin:0 auto; }
+h1 { font-size:20px; font-weight:900; margin-bottom:4px; }
+.sub { color:var(--muted); font-size:12.5px; margin-bottom:18px; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:18px; }
+.stat { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px; text-align:center; }
+.stat b { display:block; font-size:22px; font-weight:900; color:var(--green); }
+.stat small { color:var(--muted); font-size:11px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:14px; }
+.card h3 { font-size:14px; margin-bottom:10px; }
+table { width:100%; border-collapse:collapse; font-size:12.5px; }
+th, td { padding:8px 6px; text-align:left; border-bottom:1px solid var(--border); }
+th { font-size:10.5px; text-transform:uppercase; color:var(--muted); letter-spacing:.4px; }
+.badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:10.5px; font-weight:800; }
+.badge.pending { background:rgba(255,138,0,.15); color:var(--orange); border:1px solid rgba(255,138,0,.4); }
+.badge.approved { background:rgba(34,197,94,.15); color:var(--green); border:1px solid rgba(34,197,94,.4); }
+.badge.rejected { background:rgba(255,77,109,.15); color:var(--red); border:1px solid rgba(255,77,109,.4); }
+button.act { border:0; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:800; cursor:pointer; font-family:inherit; margin-right:4px; }
+button.ap { background:var(--green); color:#06150b; }
+button.rj { background:var(--red); color:#fff; }
+.empty { color:var(--muted); font-size:12.5px; text-align:center; padding:18px 0; }
+.note { background:rgba(139,92,246,.1); border:1px solid rgba(139,92,246,.35); border-radius:12px; padding:12px; font-size:12px; color:#c4b5fd; margin-bottom:14px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🤖 Painel Admin — VibeStream Economia</h1>
+  <p class="sub">Saques PIX e compras de moedas (dados locais do navegador — integração com o painel do servidor em `${ADMIN_ROUTE}`)</p>
+
+  <div class="note">⚠️ <b>Como funciona:</b> este painel lê os pedidos salvos no <b>localStorage</b> deste navegador. Para aprovar saques de usuários reais, o admin do servidor usa a aba <b>💸 Saque PIX</b> do painel principal (backend).</div>
+
+  <div class="stats">
+    <div class="stat"><b id="stPend">0</b><small>Saques pendentes</small></div>
+    <div class="stat"><b id="stTotal">R$ 0,00</b><small>Total pendente</small></div>
+    <div class="stat"><b id="stAprov">0</b><small>Aprovados</small></div>
+  </div>
+
+  <div class="card">
+    <h3>💸 Pedidos de Saque PIX</h3>
+    <div id="pixBox"><p class="empty">Carregando…</p></div>
+  </div>
+
+  <div class="card">
+    <h3>🧾 Compras de Moedas (pedidos)</h3>
+    <div id="ordersBox"><p class="empty">Carregando…</p></div>
+  </div>
+</div>
+
+<script>
+function fmtReais(v){ return Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+function load(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch(e){ return d; } }
+function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+function setStatus(id, status){
+  const list = load('vibe_pix_requests', []).map(r => {
+    if (r.id !== id) return r;
+    // Estorno quando o saque é rejeitado (moedas voltam para o usuário)
+    if (status === 'rejected' && r.status !== 'rejected') {
+      const coins = load('vibe_coins', 0);
+      save('vibe_coins', Math.max(0, Number(coins) + Number(r.coins)));
+      const hist = load('vibe_history', []);
+      hist.unshift({ n: Number(r.coins), reason: 'Estorno — saque PIX rejeitado (R$ ' + fmtReais(r.reais) + ')', at: new Date().toISOString() });
+      save('vibe_history', hist.slice(0, 300));
+    }
+    return Object.assign({}, r, { status });
+  });
+  save('vibe_pix_requests', list);
+  render();
+}
+
+function setOrderStatus(id, status){
+  let approvedCoins = 0;
+  const list = load('vibe_coin_orders', []).map(o => {
+    if (o.id !== id) return o;
+    // Aprovação credita as moedas compradas na carteira do usuário
+    if (status === 'aprovado' && o.status !== 'aprovado') approvedCoins = Number(o.coins);
+    return Object.assign({}, o, { status });
+  });
+  save('vibe_coin_orders', list);
+  if (approvedCoins > 0) {
+    const coins = load('vibe_coins', 0);
+    save('vibe_coins', Math.max(0, Number(coins) + approvedCoins));
+    const hist = load('vibe_history', []);
+    hist.unshift({ n: approvedCoins, reason: 'Compra de moedas aprovada (PIX)', at: new Date().toISOString() });
+    save('vibe_history', hist.slice(0, 300));
+  }
+  render();
+}
+function render(){
+  const pix = load('vibe_pix_requests', []);
+  const pend = pix.filter(r => r.status === 'pending');
+  const ap = pix.filter(r => r.status === 'approved');
+  document.getElementById('stPend').textContent = pend.length;
+  document.getElementById('stTotal').textContent = 'R$ ' + fmtReais(pend.reduce((s,r) => s + r.reais, 0));
+  document.getElementById('stAprov').textContent = ap.length;
+  document.getElementById('pixBox').innerHTML = pix.length
+    ? `<table><tr><th>Data</th><th>Chave PIX</th><th>Moedas</th><th>Valor</th><th>Status</th><th>Ações</th></tr>` + pix.map(r => `
+        <tr>
+          <td>${esc(new Date(r.criadoEm).toLocaleString('pt-BR'))}</td>
+          <td>${esc(r.chave)}</td>
+          <td>${Number(r.coins).toLocaleString('pt-BR')}</td>
+          <td>R$ ${fmtReais(r.reais)}</td>
+          <td><span class="badge ${r.status}">${r.status === 'pending' ? '⏳ Pendente' : r.status === 'approved' ? '✅ Aprovado' : '❌ Rejeitado'}</span></td>
+          <td>${r.status === 'pending' ? `<button class="act ap" onclick="setStatus('${r.id}','approved')">Aprovar</button><button class="act rj" onclick="setStatus('${r.id}','rejected')">Rejeitar</button>` : '-'}</td>
+        </tr>`).join('') + '</table>'
+    : '<p class="empty">Nenhum pedido de saque registrado neste navegador</p>';
+
+  const orders = load('vibe_coin_orders', []);
+  document.getElementById('ordersBox').innerHTML = orders.length
+    ? `<table><tr><th>Data</th><th>Moedas</th><th>Valor</th><th>Status</th><th>Ações</th></tr>` + orders.map(o => `
+        <tr>
+          <td>${esc(new Date(o.at).toLocaleString('pt-BR'))}</td>
+          <td>${Number(o.coins).toLocaleString('pt-BR')}</td>
+          <td>R$ ${fmtReais(o.price)}</td>
+          <td><span class="badge ${o.status === 'aprovado' ? 'approved' : o.status === 'rejeitado' ? 'rejected' : 'pending'}">${o.status === 'aprovado' ? '✅ Aprovado' : o.status === 'rejeitado' ? '❌ Rejeitado' : '⏳ Pendente'}</span></td>
+          <td>${o.status === 'pendente' ? `<button class="act ap" onclick="setOrderStatus('${o.id}','aprovado')">Aprovar</button><button class="act rj" onclick="setOrderStatus('${o.id}','rejeitado')">Rejeitar</button>` : '-'}</td>
+        </tr>`).join('') + '</table>'
+    : '<p class="empty">Nenhuma compra registrada</p>';
+}
+render();
+</script>
+</body>
+</html>

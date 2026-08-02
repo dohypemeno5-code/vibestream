@@ -6,11 +6,12 @@
 const crypto = require('crypto');
 
 const STYLES = {
-  realista:         { label: 'Realista',       colors: ['#0f2027', '#203a43', '#2c5364'], emoji: '🎬' },
   animacao:         { label: 'Animação',       colors: ['#6a11cb', '#2575fc'],             emoji: '✨' },
   cinematografico:  { label: 'Cinemático',     colors: ['#141e30', '#243b55', '#0b0f1a'],  emoji: '🎥' },
   trailer:          { label: 'Trailer',        colors: ['#20002c', '#cbb4d4'],             emoji: '🍿' },
-  shorts:           { label: 'Shorts',         colors: ['#ff0084', '#33001b'],             emoji: '📱' }
+  shorts:           { label: 'Shorts',         colors: ['#ff0084', '#33001b'],             emoji: '📱' },
+  drama:            { label: 'Drama',          colors: ['#0f3443', '#34e89e', '#0f2027'],  emoji: '🎭' },
+  meme:             { label: 'Meme',           colors: ['#f7971e', '#ffd200', '#ff512f'],  emoji: '😂' }
 };
 
 const COST_PER_GENERATION = 300;       // moedas por vídeo gerado
@@ -40,18 +41,20 @@ function cleanIdea(idea) {
 function generateScript(idea, styleKey) {
   const seed = hashSeed(idea + ':' + styleKey);
   const openers = {
-    realista: ['A vida real tem detalhes que ninguém vê. Hoje a gente mostra um deles.', 'Começa mais um dia comum — e é exatamente aí que a história mora.'],
     animacao: ['Num mundo de cores impossíveis, alguém resolveu sonhar de verdade.', 'Toda grande aventura começa com um pulo no desconhecido.'],
     cinematografico: ['No silêncio da cidade, um plano muda tudo.', 'Câmera lenta. Respiração presa. O momento que define a história.'],
     trailer: ['Eles avisaram que era impossível.', 'Ninguém acreditava. Até o dia em que tudo mudou.'],
-    shorts: ['Você não vai acreditar no que aconteceu.', '3 segundos para entender. 60 segundos para nunca esquecer.']
+    shorts: ['Você não vai acreditar no que aconteceu.', '3 segundos para entender. 60 segundos para nunca esquecer.'],
+    drama: ['No capítulo de hoje, o clima muda de vez.', 'Entre o que se diz e o que se sente, existe um segredo.'],
+    meme: ['Ninguém esperava por isso 😂', 'O plot twist que ninguém viu chegando.']
   };
   const endings = {
-    realista: ['E é assim, todo dia, que a cidade continua viva.', 'No fim, o que importa são as pessoas e as histórias que ficam.'],
     animacao: ['E viveram mais uma aventura — até o próximo sonho.', 'No mundo da imaginação, nada termina de verdade.'],
     cinematografico: ['Fim. Ou melhor: o começo de tudo.', 'Alguns finais são apenas o próximo plano.'],
     trailer: ['Este é só o começo. Vem aí.', 'Agora, o resto da história depende de você.'],
-    shorts: ['Compartilha pra alguém que precisa ver isso hoje!', 'Se chegou até aqui, esse vídeo é pra você. Segue o perfil!']
+    shorts: ['Compartilha pra alguém que precisa ver isso hoje!', 'Se chegou até aqui, esse vídeo é pra você. Segue o perfil!'],
+    drama: ['Fim do capítulo. O que será que vem por aí?', 'Mais um segredo revelado — e uma nova pergunta no ar.'],
+    meme: ['Manda pra alguém que vai se identificar 😂', 'Se você riu, compartilha com a galera!']
   };
   const scenes = [
     { hook: pick(seed, openers[styleKey] || openers.shorts), visual: 'Abertura: ' + idea },
@@ -67,11 +70,12 @@ function generateTitle(idea, styleKey) {
   const seed = hashSeed('t:' + idea + ':' + styleKey);
   const firstWords = idea.split(' ').slice(0, 5).join(' ');
   const templates = {
-    realista: [firstWords + ' — a história que ninguém contou', 'Vida real: ' + firstWords],
     animacao: ['Aventura em ' + firstWords, firstWords + ' — edição animada'],
     cinematografico: [firstWords.toUpperCase() + ' | TRAILER', 'O filme de ' + firstWords],
     trailer: [firstWords.toUpperCase() + ': o trailer', 'Em breve: ' + firstWords],
-    shorts: [firstWords + ' #Shorts', 'POV: ' + firstWords]
+    shorts: [firstWords + ' #Shorts', 'POV: ' + firstWords],
+    drama: [firstWords + ' — capítulo emocionante', firstWords + ': o drama que vai mexer com você'],
+    meme: ['POV: ' + firstWords, firstWords + ' 😂 (modo meme)']
   };
   return pick(seed, templates[styleKey] || templates.shorts).slice(0, 90);
 }

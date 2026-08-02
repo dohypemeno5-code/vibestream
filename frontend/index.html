@@ -26,6 +26,9 @@
 .splash-error{margin-top:10px;text-align:center}
 .splash-error p{color:#ff6b6b;font-size:13px;margin-bottom:10px}
 .splash-error button{background:linear-gradient(135deg,#6C5CE7,#3B82F6);color:#fff;border:0;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}
+.coin-hdr{position:relative}
+.coin-hdr #coinHeaderBadge{position:absolute;top:-4px;right:-8px;background:linear-gradient(135deg,#FFC700,#FF9F1C);color:#1a1a2e;font-size:10px;font-weight:800;min-width:17px;height:17px;line-height:17px;border-radius:999px;padding:0 4px;box-shadow:0 2px 8px rgba(255,199,0,.55);font-family:'Poppins',sans-serif}
+.ai-meme-btn{margin-top:10px;display:inline-flex;align-items:center;gap:6px;border:none;border-radius:14px;padding:10px 16px;background:linear-gradient(135deg,#FFC700,#FF9F1C);color:#1a1a2e;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 16px rgba(255,199,0,.35)}
 </style>
 </head>
 <body>
@@ -57,7 +60,8 @@
     <header class="header">
       <div class="header-left"><span class="logo">🌊 VibeStream</span></div>
       <div class="header-right">
-        <button class="btn-icon" onclick="location.href='/denuncia.html'" title="Central de Denúncias">🚨</button>
+        <button class="btn-icon" onclick="location.href='denuncia.html'" title="Central de Denúncias">🚨</button>
+        <button class="btn-icon coin-hdr" onclick="location.href='carteira.html'" title="Moedas / Carteira">🪙<span id="coinHeaderBadge">0</span></button>
         <button class="btn-icon wallet-header-btn" onclick="openWallet()" title="Carteira / Ganhar">💰</button>
         <button class="btn-icon" id="themeToggle" onclick="toggleTheme()">🌙</button>
         <button class="btn-icon" onclick="showNotifications()">🔔<span id="notifBadge" class="badge-dot hidden">0</span></button>
@@ -94,6 +98,14 @@
       <div class="lives-header">
         <h2>🎥 Lives Agora</h2>
         <button class="btn-primary btn-live" onclick="createLive()">🔴 Criar Live</button>
+      </div>
+      <div class="gaming-banner" style="margin-top:2px" onclick="location.href='jogos.html'">
+        <div class="gaming-banner-ic">🕹️</div>
+        <div>
+          <b>Vibe Games</b>
+          <small>Moto Rush, Fill Up Fridge, Roleta e mais mini-games com moedas</small>
+        </div>
+        <span class="gaming-banner-btn">Jogar</span>
       </div>
       <div class="gaming-banner" onclick="toggleGaming()">
         <div class="gaming-banner-ic">🎮</div>
@@ -157,6 +169,7 @@
           <div class="ai-hero-badge">✦</div>
           <h2>VibeAI Creator</h2>
           <p>Escreva a ideia e a IA cria o vídeo completo — roteiro, capa e legenda.</p>
+          <button class="ai-meme-btn" onclick="location.href='meme-editor.html'">🎨 Criar Meme com Texto</button>
         </div>
         <div class="ai-balance" id="aiBalance">💎 Carregando saldo…</div>
         <div class="ai-card">
@@ -187,6 +200,8 @@
             <button class="drama-tab" data-tab="alta" onclick="dramaTab('alta')">Em Alta</button>
             <button class="drama-tab" data-tab="novidades" onclick="dramaTab('novidades')">Lançamentos</button>
             <button class="drama-tab" data-tab="minha" onclick="dramaTab('minha')">Minha Área</button>
+            <button class="drama-tab" onclick="location.href='drama-feed.html'">📱 Feed Vertical</button>
+            <button class="drama-tab" onclick="location.href='jogos.html'">🎮 Jogos</button>
           </div>
         </div>
         <div id="dramaContent"><div class="drama-loading">🎭 Carregando novelas…</div></div>
@@ -250,6 +265,7 @@
   </div>
 </div>
 
+<script src="js/coins.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

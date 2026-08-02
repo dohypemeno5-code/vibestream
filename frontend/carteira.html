@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>VibeStream — Carteira</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0a0a0f; --card:#1a1a23; --card2:#232330; --border:#2a2a38; --purple:#8b5cf6; --orange:#ff8a00; --green:#22c55e; --red:#ff4d6d; --text:#f2f2fa; --muted:#9a9ab0; }
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Poppins',system-ui,sans-serif; min-height:100vh; }
+.wrap { max-width:520px; margin:0 auto; padding:14px 14px 40px; }
+header { position:sticky; top:0; z-index:30; background:rgba(10,10,15,.94); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+.head-in { max-width:520px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; }
+.logo { font-size:18px; font-weight:900; background:linear-gradient(135deg,#8b5cf6,#4cc9f0); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.back { background:var(--card); border:1px solid var(--border); color:#fff; width:38px; height:38px; border-radius:12px; font-size:16px; cursor:pointer; }
+.balance-card { margin-top:16px; background:linear-gradient(135deg,#1c1233,#101018); border:1px solid rgba(139,92,246,.4); border-radius:22px; padding:22px; text-align:center; box-shadow:0 14px 34px rgba(139,92,246,.18); }
+.balance-card .lbl { color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.balance-card .val { font-size:44px; font-weight:900; background:linear-gradient(135deg,#ffc700,#ff8a00); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; margin:6px 0; }
+.balance-card .reais { color:var(--text); font-size:16px; font-weight:800; }
+.tasks { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:16px; }
+.task { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+.task .ic { font-size:26px; }
+.task b { font-size:13.5px; display:block; }
+.task small { color:var(--muted); font-size:11px; }
+.task .go { margin-left:auto; background:var(--purple); color:#fff; border:0; border-radius:10px; padding:8px 12px; font-size:11.5px; font-weight:800; cursor:pointer; }
+.section { margin-top:20px; }
+.sec-title { font-size:14px; font-weight:800; margin-bottom:10px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px; margin-bottom:10px; }
+.card h3 { font-size:14px; margin-bottom:8px; }
+input, select { width:100%; background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:12px; padding:11px 12px; font-size:14px; outline:none; font-family:inherit; margin-top:6px; }
+input:focus, select:focus { border-color:var(--purple); }
+.btn { width:100%; border:0; border-radius:13px; padding:13px; font-weight:800; font-size:14px; cursor:pointer; font-family:inherit; margin-top:10px; }
+.btn.pix { background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; }
+.btn.purple { background:linear-gradient(135deg,#8b5cf6,#06b6d4); color:#fff; }
+.hist-item { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.hist-item small { color:var(--muted); font-size:10.5px; display:block; }
+.hist-item .pos { color:var(--green); font-weight:900; }
+.hist-item .neg { color:var(--red); font-weight:900; }
+.badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:10.5px; font-weight:800; }
+.badge.pending { background:rgba(255,138,0,.15); color:var(--orange); border:1px solid rgba(255,138,0,.4); }
+.badge.approved { background:rgba(34,197,94,.15); color:var(--green); border:1px solid rgba(34,197,94,.4); }
+.badge.rejected { background:rgba(255,77,109,.15); color:var(--red); border:1px solid rgba(255,77,109,.4); }
+.empty { color:var(--muted); font-size:12.5px; text-align:center; padding:16px 0; }
+.packs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.pack { background:var(--card2); border:1px solid var(--border); border-radius:16px; padding:14px; text-align:center; cursor:pointer; }
+.pack b { font-size:17px; display:block; }
+.pack small { color:var(--muted); font-size:10.5px; }
+.pack .price { color:var(--green); font-weight:900; font-size:12px; }
+.toast { position:fixed; left:50%; bottom:40px; transform:translateX(-50%); z-index:80; background:var(--purple); color:#fff; font-weight:700; font-size:13px; padding:10px 18px; border-radius:999px; box-shadow:0 8px 24px rgba(139,92,246,.5); animation:tin .3s; white-space:nowrap; }
+@keyframes tin { from { opacity:0; transform:translateX(-50%) translateY(12px); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <button class="back" onclick="location.href='index.html'">←</button>
+    <span class="logo">💰 Carteira</span>
+    <span></span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="balance-card">
+    <div class="lbl">🪙 Suas moedas</div>
+    <div class="val" id="balVal">0</div>
+    <div class="reais" id="balReais">R$ 0,00</div>
+  </div>
+
+  <div class="tasks">
+    <div class="task" onclick="doCheckin()"><span class="ic">📅</span><div><b>Check-in diário</b><small>+50 moedas</small></div><button class="go" id="checkinBtn">Coletar</button></div>
+    <div class="task" onclick="location.href='drama-feed.html'"><span class="ic">🎬</span><div><b>Assistir 3 dramas</b><small>+30 moedas</small></div><button class="go">Ir</button></div>
+    <div class="task" onclick="location.href='jogos.html'"><span class="ic">🕹️</span><div><b>Jogar 1 jogo</b><small>+20 moedas</small></div><button class="go">Ir</button></div>
+    <div class="task" onclick="invite()"><span class="ic">👥</span><div><b>Convidar amigo</b><small>+100 moedas</small></div><button class="go">Convidar</button></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">🛒 Loja de Moedas</div>
+    <div class="packs" id="packsBox"></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">💸 Sacar via PIX <small style="color:var(--muted)">(mínimo 1.000 moedas = R$10)</small></div>
+    <div class="card">
+      <h3>Pedido de saque</h3>
+      <input type="text" id="pixKey" placeholder="Chave PIX (CPF, e-mail, celular ou aleatória)" maxlength="60">
+      <select id="pixCoins">
+        <option value="1000">1.000 moedas → R$ 10,00</option>
+        <option value="2000">2.000 moedas → R$ 20,00</option>
+        <option value="5000">5.000 moedas → R$ 50,00</option>
+      </select>
+      <button class="btn pix" onclick="doPix()">💸 Solicitar saque PIX</button>
+    </div>
+    <div id="pixList"></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">📜 Histórico de moedas</div>
+    <div class="card" id="histBox"></div>
+  </div>
+</div>
+
+<script src="js/coins.js"></script>
+<script>
+const C = window.VS_Coins;
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+function fmt(n){ return Number(n||0).toLocaleString('pt-BR'); }
+
+function refresh(){
+  const b = C.balance();
+  document.getElementById('balVal').textContent = fmt(b);
+  document.getElementById('balReais').textContent = 'R$ ' + (b / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  // checkin
+  const ck = JSON.parse(localStorage.getItem('vibe_checkin') || '{}');
+  const today = new Date().toISOString().slice(0,10);
+  const btn = document.getElementById('checkinBtn');
+  if (ck[today]){ btn.textContent = '✅ Feito'; btn.disabled = true; btn.style.opacity = .5; }
+  // packs
+  document.getElementById('packsBox').innerHTML = C.PACKS.map(p => `
+    <div class="pack" onclick="buyPack(${p.coins})"><b>${fmt(p.coins)}</b><small>moedas</small><span class="price">R$ ${p.price.toFixed(2)}</span></div>`).join('');
+  // pix list
+  const pix = C.pixRequests();
+  document.getElementById('pixList').innerHTML = pix.length
+    ? pix.slice(0,10).map(r => `<div class="hist-item"><div><small>${new Date(r.criadoEm).toLocaleString('pt-BR')}</small><b style="font-size:12.5px">${r.coins} moedas · R$ ${r.reais.toFixed(2)}</b></div><span class="badge ${r.status}">${r.status === 'pending' ? '⏳ Pendente' : r.status === 'approved' ? '✅ Aprovado' : '❌ Rejeitado'}</span></div>`).join('')
+    : '<p class="empty">Nenhum pedido de saque ainda</p>';
+  // hist
+  const h = C.history();
+  document.getElementById('histBox').innerHTML = h.length
+    ? h.slice(0,25).map(x => `<div class="hist-item"><div>${x.reason}<small>${new Date(x.at).toLocaleString('pt-BR')}</small></div><span class="${x.n >= 0 ? 'pos' : 'neg'}">${x.n >= 0 ? '+' : ''}${fmt(x.n)}</span></div>`).join('')
+    : '<p class="empty">Sem movimentações ainda</p>';
+}
+function doCheckin(){
+  const r = C.checkin();
+  if (r.done){ toast('✅ Check-in já feito hoje'); return; }
+  toast('📅 +50 moedas!');
+  refresh();
+}
+function invite(){
+  const r = C.inviteReward();
+  if (r.limit){ toast('Limite de convites de hoje atingido'); return; }
+  const link = location.origin + location.pathname.replace(/[^/]*$/, 'drama-feed.html');
+  const txt = '🎬 Vem pro VibeStream! Baixe o app e assista novelas, memes e ganhe moedas: ' + link;
+  if (navigator.share){ navigator.share({ title:'VibeStream', text: txt }).catch(()=>{}); }
+  else { navigator.clipboard.writeText(txt).then(()=>toast('✅ Convite copiado +100 moedas')); }
+  toast('👥 +100 moedas!');
+  refresh();
+}
+function buyPack(coins){
+  const r = C.buyPack(coins);
+  if (!r.ok){ toast(r.error); return; }
+  toast('🧾 Pedido PIX criado (R$ ' + r.order.price.toFixed(2) + ') — pagamento fictício por enquanto');
+}
+function doPix(){
+  const key = document.getElementById('pixKey').value.trim();
+  const coins = parseInt(document.getElementById('pixCoins').value, 10);
+  const r = C.pixRequest(key, coins);
+  if (!r.ok){ toast('❌ ' + r.error); return; }
+  toast('💸 Pedido enviado! R$ ' + r.request.reais.toFixed(2) + ' — aguardando análise');
+  refresh();
+}
+refresh();
+</script>
+</body>
+</html>

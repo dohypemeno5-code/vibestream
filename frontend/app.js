@@ -228,6 +228,7 @@ function updateAuthUI() {
   } else {
     document.getElementById('cpAvatar').textContent = '👤';
   }
+  if (window.VS_Coins) window.VS_Coins.paintChips();
 }
 function openAuth() {
   if (currentUser) { showProfileMenu(); return; }
@@ -2212,6 +2213,7 @@ function openWallet() {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('pageWallet').classList.add('active');
   loadWallet();
+  if (window.VS_Coins) window.VS_Coins.paintChips();
 }
 function closeWallet() { switchPage('Profile'); }
 function goWatch() { switchPage('Feed'); showToast('🎬 Assista vídeos para ganhar K Golds (306/min)', 'success'); }
@@ -2816,11 +2818,12 @@ function makeAIVideo(d, title, opts, onProgress) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return reject(new Error('Seu aparelho não suporta a renderização de vídeo'));
     const styleMap = {
-      realista: ['#0f2027', '#203a43', '#2c5364'],
       animacao: ['#6a11cb', '#2575fc'],
       cinematografico: ['#141e30', '#243b55', '#0b0f1a'],
       trailer: ['#20002c', '#cbb4d4'],
-      shorts: ['#ff0084', '#33001b']
+      shorts: ['#ff0084', '#33001b'],
+      drama: ['#0f3443', '#34e89e', '#0f2027'],
+      meme: ['#f7971e', '#ffd200', '#ff512f']
     };
     const colors = styleMap[d.style] || styleMap.shorts;
     let scenes = [];
@@ -3411,11 +3414,11 @@ async function dramaOpenSeries(id) {
       <div class="drama-season">
         <div class="drama-season-title">🎬 ${escapeHtml(se.title || ('Temporada ' + se.number))}</div>
         ${(se.episodes || []).map(ep => `
-          <div class="drama-ep-row" onclick="dramaOpenEpisode('${ep.id}')">
-            <div class="drama-ep-thumb"><img src="${ep.thumbnail_url || s.cover_url || ''}" alt=""><span class="drama-ep-play">▶</span></div>
+          <div class="drama-ep-row" onclick="dramaTryOpenEpisode('${ep.id}', ${ep.number})">
+            <div class="drama-ep-thumb"><img src="${ep.thumbnail_url || s.cover_url || ''}" alt="">${dramaIsLockedEp(ep.number) ? '<span class="drama-ep-lock">🔒</span>' : '<span class="drama-ep-play">▶</span>'}</div>
             <div class="drama-ep-info">
-              <b>EP ${ep.number} · ${escapeHtml(ep.title)}</b>
-              <small>${ep.duration ? fmtDur(ep.duration) : ''} · 👁 ${fmtK(ep.views || 0)}</small>
+              <b>EP ${ep.number} · ${escapeHtml(ep.title)} ${dramaIsLockedEp(ep.number) ? '🔒' : ''}</b>
+              <small>${ep.duration ? fmtDur(ep.duration) : ''} · 👁 ${fmtK(ep.views || 0)} · ${dramaIsLockedEp(ep.number) ? '💎 100 moedas' : '✅ Grátis'}</small>
               <p>${escapeHtml((ep.summary || ep.synopsis || '').slice(0, 90))}</p>
             </div>
           </div>`).join('')}
@@ -3431,7 +3434,7 @@ async function dramaOpenSeries(id) {
             <div class="drama-meta"><span>${s.category || 'drama'}</span><span>${s.year || '2026'}</span><span>${s.total_seasons || 0} temporadas</span><span>${s.total_episodes || 0} episódios</span></div>
             ${creator ? `<div class="drama-creator" onclick="dramaOpenCreator('${creator.id}')">${creator.avatar_url ? `<img src="${creator.avatar_url}" alt="">` : (creator.display_name || '?')[0].toUpperCase()}<span>Por <b>${escapeHtml(creator.display_name || creator.username)}</b></span></div>` : ''}
             <div class="drama-detail-actions">
-              <button class="drama-btn-play" onclick="${d.seasons && d.seasons[0] && d.seasons[0].episodes[0] ? `dramaOpenEpisode('${d.seasons[0].episodes[0].id}')` : 'showToast(\'Sem episódios ainda\')'}">▶ Assistir</button>
+              <button class="drama-btn-play" onclick="${d.seasons && d.seasons[0] && d.seasons[0].episodes[0] ? `dramaTryOpenEpisode('${d.seasons[0].episodes[0].id}', ${d.seasons[0].episodes[0].number})` : 'showToast(\'Sem episódios ainda\')'}">▶ Assistir</button>
               <button class="drama-btn-ghost ${s.favorite ? 'on' : ''}" onclick="dramaToggleFavorite('${s.id}')">${s.favorite ? '♥ Favorita' : '♡ Favoritar'}</button>
               <button class="drama-btn-ghost ${s.following ? 'on' : ''}" onclick="dramaToggleFollow('${s.id}')">${s.following ? '🔔 Seguindo' : '🔕 Seguir'}</button>
             </div>
@@ -3476,6 +3479,84 @@ async function dramaOpenCreator(id) {
 // ---------- Player ----------
 let dramaPlayer = { ep: null, timer: null };
 
+// Desbloqueio pago: EP 1 grátis, EP >= 2 exige moedas (VibeDrama)
+function dramaIsLockedEp(num) { return Number(num) >= 2; }
+
+function dramaTryOpenEpisode(id, number) {
+  const num = Number(number);
+  if (window.VS_Coins && dramaIsLockedEp(num) && !window.VS_Coins.isEpUnlocked(id)) {
+    api('/drama/episodes/' + id).then(d => dramaShowUnlockModal(d.episode, d.series)).catch(() => dramaShowUnlockModal({ id: id, number: num, title: 'Episódio ' + num }, null));
+    return;
+  }
+  dramaOpenEpisode(id);
+}
+
+function dramaShowUnlockModal(ep, series) {
+  const bal = window.VS_Coins ? window.VS_Coins.balance() : 0;
+  const cost = 100;
+  const serTitle = series && series.title ? escapeHtml(series.title) : '';
+  openModal(`
+    <div class="wallet-modal" style="max-width:420px">
+      <h2 style="margin-top:0">🔒 Episódio bloqueado</h2>
+      <p style="font-size:13px;color:var(--text2)">${serTitle ? serTitle + ' — ' : ''}<b>EP ${ep.number}</b> · ${escapeHtml(ep.title || '')}</p>
+      <p style="font-size:13px">Desbloqueie por <b class="k-gold">${cost} moedas</b>. Seu saldo: 🪙 <b>${bal.toLocaleString('pt-BR')}</b></p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        <button class="btn-secondary btn-full" onclick="dramaWatchAdAndRefresh('${ep.id}', ${ep.number}, '${serTitle}')">📺 Assistir anúncio +10 🪙</button>
+        <button class="btn-primary btn-full" onclick="dramaUnlockPay('${ep.id}', ${ep.number})">💎 Pagar ${cost} moedas</button>
+        <button class="btn-secondary btn-full" onclick="dramaCoinShop()">🛒 Comprar moedas</button>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">EP 1 é grátis. Ganhe moedas assistindo vídeos, fazendo check-in e jogando mini-games.</p>
+    </div>`);
+}
+
+function dramaWatchAdAndRefresh(epId, number, seriesTitle) {
+  if (!window.VS_Coins) return;
+  const day = new Date().toISOString().slice(0, 10);
+  const k = 'vibe_ads_' + day;
+  let n = 0; try { n = Number(localStorage.getItem(k)) || 0; } catch (e) {}
+  if (n >= 10) { showToast('Limite diário de anúncios atingido (10)', 'error'); return; }
+  try { localStorage.setItem(k, String(n + 1)); } catch (e) {}
+  window.VS_Coins.add(10, 'Assistir anúncio (desbloquear EP)');
+  showToast('📺 Anúncio assistido: +10 moedas', 'success');
+  dramaShowUnlockModal({ id: epId, number: number, title: 'Episódio ' + number }, seriesTitle ? { title: seriesTitle } : null);
+}
+
+function dramaUnlockPay(epId, number) {
+  if (!window.VS_Coins) return showToast('Sistema de moedas indisponível', 'error');
+  const r = window.VS_Coins.unlockEp(epId, 100);
+  if (r.ok) {
+    showToast('✅ Episódio desbloqueado! Aproveite.', 'success');
+    closeModal();
+    dramaOpenEpisode(epId);
+  } else {
+    showToast(r.error || 'Moedas insuficientes', 'error');
+    dramaCoinShop();
+  }
+}
+
+function dramaCoinShop() {
+  if (!window.VS_Coins) return;
+  const packs = window.VS_Coins.PACKS || [];
+  openModal(`
+    <div class="wallet-modal" style="max-width:420px">
+      <h2 style="margin-top:0">🛒 Comprar moedas</h2>
+      <p style="font-size:13px;color:var(--text2)">Escolha um pacote — pagamento PIX (simulado por enquanto, aprovado no Painel Admin).</p>
+      ${packs.map(p => `
+        <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-top:10px;background:var(--card)">
+          <div><strong>${p.coins.toLocaleString('pt-BR')} 🪙</strong><br><span style="font-size:12px;color:var(--text3)">R$ ${p.price.toFixed(2).replace('.', ',')}</span></div>
+          <button class="btn-primary" onclick="dramaBuyPack(${p.coins})">Comprar</button>
+        </div>`).join('')}
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">Seus pedidos aparecem no Painel Admin (aba Saque PIX / Pedidos de moedas).</p>
+    </div>`);
+}
+
+function dramaBuyPack(coins) {
+  if (!window.VS_Coins) return;
+  const r = window.VS_Coins.buyPack(coins);
+  if (r.ok) { showToast('🛒 Pedido de ' + r.order.coins.toLocaleString('pt-BR') + ' moedas criado (pendente)', 'success'); dramaCoinShop(); }
+  else showToast(r.error || 'Não foi possível comprar', 'error');
+}
+
 async function dramaOpenEpisode(id) {
   const box = document.getElementById('dramaContent');
   box.innerHTML = '<div class="drama-loading">🎬 Carregando episódio…</div>';
@@ -3483,6 +3564,11 @@ async function dramaOpenEpisode(id) {
     const d = await api('/drama/episodes/' + id);
     const ep = d.episode;
     const s = d.series;
+    // Segurança dupla: episódio pago ainda bloqueado
+    if (window.VS_Coins && dramaIsLockedEp(ep.number) && !window.VS_Coins.isEpUnlocked(ep.id)) {
+      dramaShowUnlockModal(ep, s);
+      return;
+    }
     dramaPlayer.ep = ep;
     const mediaHtml = ep.video_url
       ? `<video id="dramaVideo" src="${ep.video_url}" controls playsinline autoplay class="drama-video"></video>`
