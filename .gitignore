@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# Database
+backend/.data/
+backend/.cache_storage.db
+backend/.cache_storage.bak
+backend/.blocked.json
+
+# Uploads
+backend/uploads/
+uploads/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Credentials
+credentials.txt
+
+# Backups
+backups/
+
+# Sessões / cookies
+nadm.txt
+
+# Build artifacts Android
+android/.gradle/
+android/build/
+android/app/build/
+android-game/.gradle/
+android-game/build/
+**/.gradle/

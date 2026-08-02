@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VibeStream — Assista, acumule pontos e troque por recompensas</title>
+<meta name="description" content="Assista novelas e vídeos favoritos, acumule pontos e troque por recompensas. Consulte regras e critérios de saque.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root { --roxo:#7c5cff; --azul:#3d7bff; --rosa:#ff4d9d; --ouro:#ffd54a; --bg:#0b0b1e; --card:#161632; --texto:#f2f3ff; }
+  body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--texto); overflow-x:hidden; }
+  a { color:inherit; text-decoration:none; }
+  .topbar { display:flex; align-items:center; gap:10px; padding:18px 6vw; }
+  .logo { font-size:1.5rem; font-weight:800; background:linear-gradient(135deg,#a78bfa,#38bdf8); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .logo small { display:block; font-size:.7rem; color:#8f92b8; font-weight:500; letter-spacing:2px; }
+  .hero { position:relative; display:grid; grid-template-columns:1.1fr .9fr; align-items:center; gap:20px; padding:30px 6vw 10px; }
+  @media (max-width:860px){ .hero { grid-template-columns:1fr; text-align:center; } .hero .cta { justify-content:center; } }
+  h1 { font-size:clamp(1.7rem,4.6vw,3rem); line-height:1.15; margin-bottom:16px; }
+  h1 .grad { background:linear-gradient(90deg,var(--ouro),#ff9d4d); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sub { color:#b9bce4; font-size:clamp(1rem,2.2vw,1.2rem); margin-bottom:22px; max-width:560px; }
+  .cta { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:50px; font-weight:700; font-size:1rem; transition:transform .15s, box-shadow .15s; }
+  .btn:hover { transform:translateY(-2px); }
+  .btn-primary { background:linear-gradient(90deg,var(--roxo),var(--azul)); box-shadow:0 8px 30px rgba(124,92,255,.45); }
+  .btn-outline { border:1.5px solid #4d4f78; background:rgba(255,255,255,.04); }
+  .trust { font-size:.8rem; color:#7e81ab; display:flex; gap:16px; flex-wrap:wrap; }
+  .trust b { color:#cfd2f5; }
+  /* celular mockup */
+  .phone-wrap { display:flex; justify-content:center; }
+  .phone { width:min(300px,78vw); background:#10102b; border-radius:40px; padding:12px; border:2px solid #2c2c55; box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 60px rgba(124,92,255,.25); position:relative; }
+  .phone .notch { width:90px; height:20px; background:#0b0b1e; border-radius:20px; margin:4px auto 10px; }
+  .screen { background:#0f0f26; border-radius:26px; overflow:hidden; }
+  .video { height:150px; background:linear-gradient(160deg,#2b1b4d,#10102b 60%,#0b2b3d); position:relative; display:flex; align-items:center; justify-content:center; }
+  .video .play { width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,.18); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; font-size:18px; border:1px solid rgba(255,255,255,.3); }
+  .video .badge { position:absolute; top:10px; left:10px; font-size:.65rem; background:#ff4d4d; padding:3px 8px; border-radius:8px; font-weight:700; }
+  .video .ep { position:absolute; bottom:8px; left:12px; right:12px; display:flex; justify-content:space-between; color:#cfd2f5; font-size:.65rem; }
+  .scrub { height:3px; background:#3a3a66; margin:0 12px; border-radius:3px; position:relative; }
+  .scrub::after { content:''; position:absolute; left:0; top:0; bottom:0; width:42%; background:linear-gradient(90deg,var(--roxo),var(--azul)); border-radius:3px; }
+  .app-row { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid #1d1d40; }
+  .app-row .ic { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; }
+  .app-row .tx { flex:1; }
+  .app-row .tx b { font-size:.8rem; display:block; }
+  .app-row .tx small { color:#8f92b8; font-size:.68rem; }
+  .coin { color:var(--ouro); font-weight:800; font-size:.8rem; }
+  .wallet { margin:10px 12px; background:linear-gradient(135deg,#241b52,#10102b); border:1px solid #3b2f7a; border-radius:14px; padding:12px; }
+  .wallet .lbl { font-size:.62rem; color:#a9acd8; letter-spacing:1px; }
+  .wallet .val { font-size:1.15rem; font-weight:800; color:var(--ouro); }
+  .wallet .row { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+  .btn-saque { background:linear-gradient(90deg,var(--ouro),#ffb347); color:#1a1405; font-weight:800; font-size:.7rem; padding:7px 14px; border-radius:20px; }
+  .btn-rec { background:linear-gradient(90deg,var(--roxo),var(--azul)); font-weight:700; font-size:.7rem; padding:7px 14px; border-radius:20px; }
+  .task { display:flex; align-items:center; gap:9px; padding:9px 14px; font-size:.72rem; color:#cfd2f5; }
+  .task .done { color:#2ed573; font-weight:800; }
+  .task .pts { margin-left:auto; color:var(--ouro); font-weight:700; }
+  .taskbar { display:flex; justify-content:space-around; padding:10px 0; color:#6f72a0; font-size:.62rem; }
+  .taskbar span.active { color:#a78bfa; }
+  /* secoes */
+  section { padding:40px 6vw; }
+  .sec-title { font-size:clamp(1.2rem,3vw,1.7rem); margin-bottom:8px; text-align:center; }
+  .sec-sub { color:#a9acd8; text-align:center; margin-bottom:28px; font-size:.95rem; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid #26264e; border-radius:18px; padding:22px; }
+  .card .em { font-size:1.8rem; margin-bottom:10px; }
+  .card h3 { font-size:1rem; margin-bottom:6px; }
+  .card p { color:#a9acd8; font-size:.85rem; line-height:1.5; }
+  .steps { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-top:6px; }
+  .step { flex:1; min-width:200px; max-width:300px; background:rgba(255,255,255,.03); border:1px dashed #3d3f6e; border-radius:16px; padding:18px; text-align:center; }
+  .step .n { width:30px; height:30px; margin:0 auto 8px; border-radius:50%; background:linear-gradient(135deg,var(--roxo),var(--azul)); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.9rem; }
+  .step b { display:block; margin-bottom:4px; }
+  .step small { color:#a9acd8; font-size:.78rem; line-height:1.4; display:block; }
+  .rewards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+  .rw { background:linear-gradient(180deg,#1c1c3f,#14142e); border:1px solid #2b2b5a; border-radius:14px; padding:16px; text-align:center; }
+  .rw .ic { font-size:1.6rem; }
+  .rw .nome { font-weight:700; font-size:.88rem; margin-top:6px; }
+  .rw .pts { color:var(--ouro); font-size:.78rem; margin-top:2px; }
+  .faq { max-width:760px; margin:0 auto; }
+  .faq details { background:var(--card); border:1px solid #26264e; border-radius:12px; padding:14px 18px; margin-bottom:10px; }
+  .faq summary { font-weight:600; cursor:pointer; }
+  .faq p { color:#a9acd8; font-size:.85rem; margin-top:8px; line-height:1.5; }
+  .note { max-width:760px; margin:18px auto 0; background:rgba(255,213,74,.08); border:1px solid rgba(255,213,74,.3); border-radius:12px; padding:14px 18px; font-size:.8rem; color:#e8dcae; }
+  footer { text-align:center; padding:34px 6vw; border-top:1px solid #1d1d40; color:#7e81ab; font-size:.8rem; line-height:1.7; }
+  footer b { color:#cfd2f5; }
+  .pill { display:inline-block; background:rgba(124,92,255,.15); border:1px solid rgba(124,92,255,.4); color:#b7a6ff; padding:5px 14px; border-radius:40px; font-size:.75rem; font-weight:700; margin-bottom:14px; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">VibeStream<small>CONECTANDO PESSOAS</small></div>
+  </div>
+
+  <div class="hero">
+    <div>
+      <span class="pill">🎬 Vídeos • Novelas • Recompensas</span>
+      <h1>Assista seus conteúdos favoritos, acumule pontos e troque por <span class="grad">recompensas reais!</span></h1>
+      <p class="sub">Novelas, filmes, vídeos virais e lives em um só aplicativo. Complete tarefas diárias, ganhe pontos e use sua carteira para solicitar o saque.</p>
+      <div class="cta">
+        <span class="btn btn-primary" style="cursor:default">📱 Disponível em breve na Google Play</span>
+        <a class="btn btn-outline" href="/">Abrir VibeStream Web</a>
+      </div>
+      <div class="trust">
+        <span>✔ <b>Sem custo</b></span>
+        <span>✔ <b>Compatível Android 7+</b></span>
+        <span>✔ <b>Regras claras</b></span>
+      </div>
+    </div>
+
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="video">
+            <span class="badge">AO VIVO</span>
+            <div class="play">▶</div>
+            <div class="ep"><span>NOVELA • EP 12</span><span>2.4K assistindo</span></div>
+          </div>
+          <div class="scrub"></div>
+          <div class="app-row">
+            <div class="ic" style="background:#241b52">🎬</div>
+            <div class="tx"><b>Novela: Coração de Aço</b><small>Legendado PT • HD</small></div>
+            <span class="coin">+25 pts</span>
+          </div>
+          <div class="wallet">
+            <div class="lbl">MINHA CARTEIRA</div>
+            <div class="row"><span class="val">R$ 47,50</span><a class="btn-saque" href="/">💸 Solicitar saque</a></div>
+            <div class="row" style="margin-top:6px"><span class="lbl">Pontos: 4.750</span><a class="btn-rec" href="/">⚡ Recarregar</a></div>
+          </div>
+          <div class="task"><span class="done">✔</span> Assistir 3 vídeos hoje <span class="pts">+15 pts</span></div>
+          <div class="task"><span class="done">✔</span> Convidar um amigo <span class="pts">+100 pts</span></div>
+          <div class="task"><span>◌</span> Assistir 30 min de novela <span class="pts">+30 pts</span></div>
+          <div class="taskbar"><span class="active">Início</span><span>Descobrir</span><span>Pontos</span><span>Carteira</span><span>Perfil</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2 class="sec-title">Como funciona</h2>
+    <p class="sec-sub">Simples de usar, com transparência do início ao fim.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><b>Baixe o app</b><small>Instale gratuitamente no seu Android.</small></div>
+      <div class="step"><div class="n">2</div><b>Assista e participe</b><small>Complete tarefas diárias e missões para acumular pontos.</small></div>
+      <div class="step"><div class="n">3</div><b>Solicite o saque</b><small>Use a carteira do app e solicite a retirada seguindo os critérios.</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec-title">Acumule pontos no seu ritmo</h2>
+    <p class="sec-sub">Cada atividade completada soma pontos na sua conta.</p>
+    <div class="rewards">
+      <div class="rw"><div class="ic">🎬</div><div class="nome">Assistir vídeos</div><div class="pts">+5 a +30 pts</div></div>
+      <div class="rw"><div class="ic">📺</div><div class="nome">Novelas completas</div><div class="pts">+50 a +200 pts</div></div>
+      <div class="rw"><div class="ic">📅</div><div class="nome">Tarefa diária</div><div class="pts">+15 pts</div></div>
+      <div class="rw"><div class="ic">📣</div><div class="nome">Convidar amigos</div><div class="pts">+100 pts</div></div>
+      <div class="rw"><div class="ic">💬</div><div class="nome">Interagir no chat</div><div class="pts">+5 pts</div></div>
+      <div class="rw"><div class="ic">🎁</div><div class="nome">Campanhas especiais</div><div class="pts">Pontos extras</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec-title">Perguntas frequentes</h2>
+    <div class="faq">
+      <details>
+        <summary>Como ganho pontos?</summary>
+        <p>Assistindo vídeos, completando tarefas diárias, convidando amigos e participando de campanhas dentro do app.</p>
+      </details>
+      <details>
+        <summary>Como solicito o saque?</summary>
+        <p>Os pontos são convertidos no saldo da carteira conforme as regras do programa. A opção de saque fica disponível na carteira quando você atinge os critérios mínimos exigidos.</p>
+      </details>
+      <details>
+        <summary>Existe valor mínimo para saque?</summary>
+        <p>Sim. O valor mínimo e os critérios de liberação são informados no app e na página de regras, e podem ser ajustados a qualquer momento.</p>
+      </details>
+      <details>
+        <summary>Ganhos são garantidos?</summary>
+        <p>Não. Pontos e recompensas dependem da sua atividade e do cumprimento das regras. Não prometemos valores fixos nem ganhos garantidos.</p>
+      </details>
+    </div>
+    <div class="note">⚠️ Consulte regras e critérios de saque dentro do aplicativo. Recompensas não são ganhos garantidos — valores dependem da sua atividade, disponibilidade de campanhas e das regras do programa.</div>
+  </section>
+
+  <section style="padding-top:10px;text-align:center">
+    <span class="btn btn-primary" style="font-size:1.02rem;padding:16px 34px;cursor:default">📱 Disponível em breve na Google Play</span>
+    <p style="color:#7e81ab;font-size:.8rem;margin-top:14px">Android 7.0+ • Sem cadastro para começar</p>
+  </section>
+
+  <footer>
+    <div class="logo" style="font-size:1.1rem">VibeStream</div>
+    <div style="margin-top:10px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <a href="/privacy" style="color:#b7a6ff">Política de Privacidade</a>
+      <a href="/terms" style="color:#b7a6ff">Termos de Uso</a>
+      <a href="/contact" style="color:#b7a6ff">Contato</a>
+      <a href="/delete-account" style="color:#b7a6ff">Deletar Conta</a>
+    </div>
+    <p style="margin-top:12px">Conteúdo original e licenciado. <b>Não prometemos ganhos garantidos.</b><br>
+    Consulte sempre as regras e critérios de saque no aplicativo. © 2026 VibeStream.</p>
+  </footer>
+</body>
+</html>

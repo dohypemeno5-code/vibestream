@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_top">#0B1020</color>
+    <color name="bg_bottom">#1A2438</color>
+    <color name="accent">#FFC53D</color>
+    <color name="accent_dark">#E0A020</color>
+    <color name="panel">#16203A</color>
+    <color name="panel_stroke">#2E3E63</color>
+    <color name="text_primary">#F2F5FA</color>
+    <color name="text_secondary">#8FA3C8</color>
+    <color name="danger">#E8503A</color>
+    <color name="success">#3ECF7E</color>
+    <color name="info">#38B6FF</color>
+</resources>

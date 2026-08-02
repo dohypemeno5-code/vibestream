@@ -1,0 +1,51 @@
+#!/bin/bash
+# Gradle wrapper for VibeStream
+
+APP_NAME="Gradle"
+APP_BASE_NAME=$(basename "$0")
+
+# Determine the project base dir
+DIRNAME=$(dirname "$0")
+cd "$DIRNAME" || exit
+
+# Set JAVA_HOME if not set
+if [ -z "$JAVA_HOME" ]; then
+    JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+fi
+
+# Gradle version
+GRADLE_VERSION="8.5"
+GRADLE_DIR="$HOME/.gradle/wrapper/dists/gradle-${GRADLE_VERSION}-bin"
+GRADLE_EXEC=""
+
+# Look for installed gradle in wrapper cache
+if ls -d "$GRADLE_DIR"*/ 2>/dev/null | head -1; then
+    GRADLE_DIR=$(ls -d "$GRADLE_DIR"*/ 2>/dev/null | head -1)
+    GRADLE_EXEC="$GRADLE_DIR/gradle-${GRADLE_VERSION}/bin/gradle"
+fi
+
+# Fallback to system gradle
+if [ -z "$GRADLE_EXEC" ] || [ ! -f "$GRADLE_EXEC" ]; then
+    # Try direct install
+    GRADLE_EXEC="/opt/gradle-$GRADLE_VERSION/gradle-$GRADLE_VERSION/bin/gradle"
+fi
+
+if [ -z "$GRADLE_EXEC" ] || [ ! -f "$GRADLE_EXEC" ]; then
+    echo "Gradle $GRADLE_VERSION not found."
+    echo "Please install Gradle $GRADLE_VERSION or set up the wrapper."
+    echo "Trying: /opt/gradle-8.5/gradle-8.5/bin/gradle"
+    GRADLE_EXEC="/opt/gradle-8.5/gradle-8.5/bin/gradle"
+fi
+
+if [ ! -f "$GRADLE_EXEC" ]; then
+    echo "Gradle not found. Downloading..."
+    mkdir -p /opt/gradle-8.5
+    curl -sL -o /tmp/gradle-8.5-bin.zip "https://services.gradle.org/distributions/gradle-8.5-bin.zip"
+    unzip -q /tmp/gradle-8.5-bin.zip -d /opt/gradle-8.5/
+    GRADLE_EXEC="/opt/gradle-8.5/gradle-8.5/bin/gradle"
+fi
+
+export ANDROID_HOME="${ANDROID_HOME:-/opt/android-sdk}"
+export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-/opt/android-sdk}"
+
+exec "$GRADLE_EXEC" "$@"

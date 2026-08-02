@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criar Família — VibeStream</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0A0A0F;color:#f2f3ff;min-height:100vh}
+.wrap{max-width:480px;margin:0 auto;padding:18px 16px 60px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.back{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:12px;padding:8px 14px;font-size:14px;cursor:pointer;text-decoration:none}
+.logo{font-size:1.2rem;font-weight:800;background:linear-gradient(135deg,#a78bfa,#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent;flex:1}
+h1{font-size:1.4rem;margin-bottom:4px}
+.sub{color:#8f92b8;font-size:.85rem;margin-bottom:18px;line-height:1.5}
+.card{background:#16161f;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+label{display:block;font-size:.78rem;font-weight:700;color:#a6a6c0;margin:12px 0 6px;letter-spacing:.3px}
+input,textarea{width:100%;padding:13px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#10101a;color:#fff;font-size:.95rem;outline:none}
+input:focus,textarea:focus{border-color:#7C3AED}
+textarea{min-height:90px;resize:vertical}
+.tag-preview{font-size:1rem;font-weight:800;color:#FFC700;margin-top:6px;letter-spacing:1px}
+.btn{width:100%;display:block;border:0;border-radius:40px;padding:15px;font-weight:800;font-size:1rem;cursor:pointer;text-align:center;text-decoration:none}
+.btn-primary{background:linear-gradient(90deg,#7C3AED,#06B6D4);color:#fff}
+.btn-gold{background:linear-gradient(90deg,#FFB300,#FFC700);color:#221a00}
+.btn-red{background:#FF3B30;color:#fff}
+.btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff}
+.msg{margin-top:12px;padding:12px 14px;border-radius:12px;font-size:.85rem;display:none;line-height:1.4}
+.msg.ok{display:block;background:rgba(46,213,115,.12);border:1px solid rgba(46,213,115,.4);color:#7ee2a8}
+.msg.err{display:block;background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.4);color:#ff8b96}
+.warn{background:rgba(124,58,237,.14);border:1px solid rgba(124,58,237,.5);border-radius:14px;padding:12px 14px;font-size:.8rem;color:#c9b8ff;margin-bottom:14px}
+.status-chip{display:inline-block;padding:6px 14px;border-radius:30px;font-size:.75rem;font-weight:800}
+.status-pendente{background:rgba(245,165,36,.15);color:#f5a524;border:1px solid rgba(245,165,36,.4)}
+.status-aprovada{background:rgba(46,213,115,.15);color:#2ed573;border:1px solid rgba(46,213,115,.4)}
+.status-reprovada{background:rgba(255,71,87,.15);color:#ff4757;border:1px solid rgba(255,71,87,.4)}
+.avatar-up{width:84px;height:84px;border-radius:50%;margin:6px auto 0;background:linear-gradient(135deg,#7C3AED,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:34px;overflow:hidden;cursor:pointer;border:2px solid rgba(255,199,0,.6)}
+.avatar-up img{width:100%;height:100%;object-fit:cover}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{color:#8f92b8;text-align:left;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.1);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px}
+td{padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.05)}
+.mini-av{width:32px;height:32px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,#7C3AED,#06B6D4);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.mini-av img{width:100%;height:100%;object-fit:cover}
+.badge{display:inline-block;background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.5);color:#c9b8ff;font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:8px;margin-left:4px}
+.btn-sm{padding:7px 14px;border-radius:30px;border:0;font-size:.75rem;font-weight:800;cursor:pointer}
+.btn-green{background:#2ed573;color:#0a1a10}
+.btn-red2{background:rgba(255,59,48,.15);color:#ff6b6b;border:1px solid rgba(255,59,48,.4)}
+.loading{text-align:center;color:#8f92b8;padding:40px;font-size:.9rem}
+footer{margin-top:26px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:.75rem}
+footer a{color:#8f92b8;text-decoration:none}
+</style></head><body>
+<div class="wrap">
+  <div class="top"><a class="back" href="/">←</a><div class="logo">🌊 VibeStream</div></div>
+  <h1>👥 Criar Família</h1>
+  <p class="sub">Crie sua família e entre no ranking. A TAG aparece no seu nome: <b style="color:#FFC700">[TDA] Nome</b></p>
+  <div class="card">
+    <div class="avatar-up" id="logoBox" onclick="document.getElementById('logoInput').click()">🏆<input type="file" id="logoInput" accept="image/*" style="display:none" onchange="readLogo(this)"></div>
+    <label>Nome da Família</label>
+    <input type="text" id="fNome" maxlength="30" placeholder="TROPA DO..." oninput="preview()">
+    <label>TAG (3 a 5 letras)</label>
+    <input type="text" id="fTag" maxlength="5" placeholder="TDA" oninput="preview()" style="text-transform:uppercase">
+    <div class="tag-preview" id="tagPreview">[TDA] SEU NOME</div>
+    <label>Descrição</label>
+    <textarea id="fDesc" placeholder="Descreva sua família..."></textarea>
+    <button class="btn btn-primary" style="margin-top:16px" onclick="criarFamilia()">👥 Criar Família — R$ 0 grátis</button>
+    <div class="msg" id="fMsg"></div>
+  </div>
+  <footer><a href="/privacy">Privacidade</a><a href="/terms">Termos</a><a href="/contact">Contato</a><a href="/delete-account">Deletar Conta</a></footer>
+</div>
+<script>
+let logoUrl = '';
+function preview(){ var t=document.getElementById('fTag').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase(); document.getElementById('tagPreview').textContent = t.length>=3 ? '['+t+'] SEU NOME' : '[TDA] SEU NOME'; }
+function readLogo(input){ var f=input.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(e){ logoUrl=e.target.result; document.getElementById('logoBox').innerHTML='<img src="'+e.target.result+'">'; }; r.readAsDataURL(f); }
+async function criarFamilia(){
+  var m=document.getElementById('fMsg');
+  var body={ nome:document.getElementById('fNome').value, tag:document.getElementById('fTag').value, descricao:document.getElementById('fDesc').value, logo:logoUrl };
+  try{
+    var r=await fetch('/api/familias/criar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json')) throw new Error('API retornou HTML');
+    var d=await r.json();
+    if(!r.ok){ m.className='msg err'; m.textContent='❌ '+(d.error||'Erro'); return; }
+    m.className='msg ok'; m.textContent='✅ '+d.data.message;
+    setTimeout(function(){ location.href='/familia?id='+d.data.id; },1200);
+  }catch(e){ m.className='msg err'; m.textContent='❌ '+e.message; }
+}
+</script></body></html>

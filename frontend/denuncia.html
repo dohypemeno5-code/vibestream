@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#6C5CE7">
+<meta name="description" content="Denuncie conteúdo ou usuários na plataforma. Análise humana caso a caso.">
+<title>Denúncia — Central de Moderação</title>
+<style>
+:root{
+  --bg:#0f1023; --bg2:#171936; --card:#1c1f45; --card2:#242756; --border:#2e3266;
+  --text:#eef0ff; --muted:#9aa0d0; --primary:#6C5CE7; --primary2:#3B82F6;
+  --green:#2ecc71; --red:#ff6b6b; --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;padding-bottom:48px;
+  background:radial-gradient(1000px 460px at 85% -10%, rgba(108,92,231,.22), transparent 60%),radial-gradient(800px 400px at -5% 110%, rgba(59,130,246,.15), transparent 60%),var(--bg)}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+.header{display:flex;align-items:center;gap:12px;padding:14px 16px;position:sticky;top:0;z-index:5;background:rgba(15,16,35,.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.header .logo{font-size:19px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--primary2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.header .back{background:var(--card);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:12px;font-size:16px;cursor:pointer;flex-shrink:0}
+.header .back:active{transform:scale(.94)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.card h2{font-size:16px;margin-bottom:4px}
+.card .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.note{padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.55;margin-top:16px}
+.note.info{border:1px solid #3b82f655;background:rgba(59,130,246,.08);color:#bcd0ff}
+.note.warn{border:1px solid #f5c54255;background:rgba(245,197,66,.08);color:#ffe9a8}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.field label b{color:var(--text)}
+input[type=text],input[type=url],select,textarea{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 12px;font-size:14.5px;outline:none;transition:border-color .2s;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+textarea{min-height:90px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr;gap:0 12px}
+@media(min-width:640px){.row2{grid-template-columns:1fr 1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary2));transition:transform .12s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.status{margin-top:12px;font-size:13.5px;min-height:20px;line-height:1.5}
+.status.ok{color:var(--green)}
+.status.err{color:var(--red)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.tag.pendente{background:#3b82f633;color:#7ab3ff}
+.tag.analisando{background:#f5c54233;color:#ffd76a}
+.tag.aceita{background:#2ecc7133;color:#6fe6a5}
+.tag.rejeitada{background:#ff6b6b33;color:#ff9d9d}
+.empty{color:var(--muted);font-size:13px;padding:14px 0;text-align:center}
+a{color:#9db8ff}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <button class="back" onclick="location.href='/'" title="Voltar">←</button>
+  <span class="logo">🚨 Central de Denúncias</span>
+</header>
+
+<div class="wrap">
+  <div id="loginBox" class="card" style="display:none">
+    <h2>Faça login para denunciar</h2>
+    <p class="sub">Denúncias são vinculadas à sua conta para evitar reportes falsos e em massa.</p>
+    <button class="btn" onclick="location.href='/'">Entrar no app</button>
+  </div>
+
+  <div id="formCard" class="card" style="display:none">
+    <h2>📝 Registrar denúncia</h2>
+    <p class="sub">Uma denúncia por vez — cada caso é analisado pela equipe de moderação. Denúncias falsas ou em massa geram punição.</p>
+
+    <div class="field">
+      <label for="target"><b>Usuário denunciado</b> (username ou ID — obrigatório)</label>
+      <input type="text" id="target" placeholder="ex.: @usuario ou ID" maxlength="60">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="contentType">Tipo de conteúdo (opcional)</label>
+        <select id="contentType">
+          <option value="">Somente usuário</option>
+          <option value="post">Post</option>
+          <option value="comment">Comentário</option>
+          <option value="live">Live</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="contentId">ID do conteúdo (opcional)</label>
+        <input type="text" id="contentId" placeholder="ex.: uuid do post/live" maxlength="80">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="reason"><b>Motivo</b></label>
+      <select id="reason">
+        <option value="">Selecione…</option>
+        <option value="assédio">Assédio ou perseguição</option>
+        <option value="discurso_ódio">Discurso de ódio</option>
+        <option value="conteúdo_violento">Conteúdo violento ou ameaça</option>
+        <option value="conteúdo_adulto">Conteúdo adulto impróprio</option>
+        <option value="golpe_fraude">Golpe, fraude ou estelionato</option>
+        <option value="spam">Spam ou bots</option>
+        <option value="impersonação">Fake / impersonação</option>
+        <option value="informação_falsa">Informação falsa</option>
+        <option value="outros">Outros</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="description"><b>Descrição</b> (detalhe o que aconteceu)</label>
+      <textarea id="description" maxlength="1500" placeholder="Descreva com fatos: o que aconteceu, quando, quem viu…"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="evidence">Link de prova (opcional)</label>
+      <input type="url" id="evidence" placeholder="https://…" maxlength="500">
+    </div>
+
+    <button class="btn" id="submitBtn" onclick="submitReport()">🚨 Enviar denúncia</button>
+    <div class="status" id="formStatus"></div>
+  </div>
+
+  <div class="note info">
+    <b>Como funciona:</b> sua denúncia entra numa fila de análise humana. Você pode acompanhar o status abaixo.
+    Limites de segurança (por usuário: 5/hora, 15/dia e no máx. 3 em análise) existem para impedir denúncias em massa — quem abusa é punido.
+  </div>
+
+  <div class="card">
+    <h2>📋 Minhas denúncias</h2>
+    <p class="sub" id="mySub">Acompanhe a análise dos seus reportes.</p>
+    <div id="myReports"><p class="empty">Carregando…</p></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var API = (window.__VITE_API_URL || window.location.origin) + '/api';
+
+  async function api(path, opts){
+    opts = opts || {};
+    var res = await fetch(API + path, {
+      method: opts.method || 'GET',
+      headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) },
+      credentials: 'include',
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    var text = await res.text();
+    var data;
+    try { data = text ? JSON.parse(text) : {}; } catch(e){ data = { error: text || 'Erro de conexão' }; }
+    if (!res.ok){ var err = new Error(data.error || 'Erro na requisição'); err.data = data; err.status = res.status; throw err; }
+    return data;
+  }
+
+  async function init(){
+    try {
+      var me = await api('/auth/me');
+      document.getElementById('formCard').style.display = '';
+      loadMyReports();
+    } catch(e){
+      if (e.status === 401 || e.status === 403) {
+        document.getElementById('loginBox').style.display = '';
+      } else {
+        document.getElementById('loginBox').style.display = '';
+        document.getElementById('loginBox').querySelector('.sub').textContent = 'Sem conexão com o servidor: ' + (e.message || 'tente novamente');
+      }
+    }
+  }
+
+  function setStatus(el, msg, ok){
+    el.textContent = msg || '';
+    el.className = 'status' + (ok ? ' ok' : (msg ? ' err' : ''));
+  }
+
+  window.submitReport = async function(){
+    var btn = document.getElementById('submitBtn');
+    var st = document.getElementById('formStatus');
+    var target = document.getElementById('target').value.trim();
+    var contentType = document.getElementById('contentType').value;
+    var contentId = document.getElementById('contentId').value.trim();
+    var reason = document.getElementById('reason').value;
+    var description = document.getElementById('description').value.trim();
+    var evidence = document.getElementById('evidence').value.trim();
+
+    if (!target){ setStatus(st, 'Informe o usuário denunciado (username ou ID).'); return; }
+    if (!reason){ setStatus(st, 'Selecione o motivo da denúncia.'); return; }
+    if (contentId && !contentType){ setStatus(st, 'Se informar o ID do conteúdo, escolha também o tipo (post, comentário ou live).'); return; }
+
+    btn.disabled = true;
+    setStatus(st, 'Enviando…');
+    try {
+      await api('/reports/create', {
+        method: 'POST',
+        body: {
+          reportedUserId: target,
+          contentId: contentId || undefined,
+          contentType: contentType || 'user',
+          reason: reason,
+          description: description,
+          evidenceUrl: evidence || undefined
+        }
+      });
+      setStatus(st, '✅ Denúncia registrada! Nossa equipe vai analisar.', true);
+      document.getElementById('description').value = '';
+      document.getElementById('evidence').value = '';
+      document.getElementById('contentId').value = '';
+      loadMyReports();
+    } catch(e){
+      setStatus(st, '❌ ' + (e.message || 'Erro ao enviar. Tente novamente.'));
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  var STATUS_LABEL = {
+    pending: ['pendente','Pendente'],
+    analyzing: ['analisando','Em análise'],
+    accepted: ['aceita','Aceita'],
+    rejected: ['rejeitada','Rejeitada']
+  };
+
+  async function loadMyReports(){
+    var box = document.getElementById('myReports');
+    var sub = document.getElementById('mySub');
+    try {
+      var data = await api('/reports/my');
+      var reports = data.reports || [];
+      sub.textContent = reports.length ? reports.length + ' denúncia(s) registrada(s) por você.' : 'Você ainda não registrou denúncias.';
+      if (!reports.length){ box.innerHTML = '<p class="empty">Nenhuma denúncia ainda.</p>'; return; }
+      var rows = reports.map(function(r){
+        var st = STATUS_LABEL[r.status] || ['pendente', r.status || 'Pendente'];
+        var target = r.reported_username || (r.content_type === 'user' ? 'Usuário' : r.content_type + ':' + (r.content_id||'').slice(0,8));
+        return '<tr><td>' + esc(r.reason || '-') + '</td><td>' + esc(r.reported_username || target) + '</td>' +
+          '<td><span class="tag ' + st[0] + '">' + st[1] + '</span></td><td>' + esc((r.description||'').slice(0,60)) + '</td><td>' + esc((r.created_at||'').slice(0,16)) + '</td></tr>';
+      }).join('');
+      box.innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Motivo</th><th>Alvo</th><th>Status</th><th>Descrição</th><th>Data</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    } catch(e){
+      sub.textContent = '';
+      box.innerHTML = '<p class="empty">Erro ao carregar suas denúncias: ' + esc(e.message || '') + '</p>';
+    }
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

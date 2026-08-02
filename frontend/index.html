@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6C5CE7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>VibeStream - Rede Social</title>
+  <link rel="manifest" href="/pwa/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // Override opcional da API (mesma origem por padrão)
+    (function(){
+      try {
+        var q = new URLSearchParams(location.search).get('api');
+        if (q) window.__VITE_API_URL = q.replace(/\/+$/, '');
+      } catch(e) {}
+    })();
+  </script>
+<style>
+.splash-status{color:#8a8aa3;font-size:13px;margin-top:14px;min-height:18px;transition:color .3s}
+.splash-error{margin-top:10px;text-align:center}
+.splash-error p{color:#ff6b6b;font-size:13px;margin-bottom:10px}
+.splash-error button{background:linear-gradient(135deg,#6C5CE7,#3B82F6);color:#fff;border:0;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- SPLASH -->
+  <div id="splash" class="splash">
+    <div class="splash-content">
+      <div class="splash-logo">🌊</div>
+      <h1>VibeStream</h1>
+      <p class="splash-sub">Conectando pessoas</p>
+      <div class="loader"><div class="loader-bar"></div></div>
+      <p class="splash-status" id="splashStatus">Conectando ao servidor…</p>
+      <div id="splashError" class="splash-error hidden">
+        <p>Não foi possível conectar. Verifique sua internet e tente novamente.</p>
+        <button onclick="retryBoot()">🔄 Tentar novamente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal hidden"><div class="modal-backdrop" onclick="closeModal()"></div><div class="modal-content" id="modalContent"></div></div>
+
+  <!-- MAIN CONTENT -->
+  <div id="mainContent" class="main-content hidden">
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-left"><span class="logo">🌊 VibeStream</span></div>
+      <div class="header-right">
+        <button class="btn-icon" onclick="location.href='/denuncia.html'" title="Central de Denúncias">🚨</button>
+        <button class="btn-icon wallet-header-btn" onclick="openWallet()" title="Carteira / Ganhar">💰</button>
+        <button class="btn-icon" id="themeToggle" onclick="toggleTheme()">🌙</button>
+        <button class="btn-icon" onclick="showNotifications()">🔔<span id="notifBadge" class="badge-dot hidden">0</span></button>
+        <button class="btn-icon" id="authBtn" onclick="openAuth()">👤</button>
+      </div>
+    </header>
+
+    <!-- PAGES -->
+    <div id="pageFeed" class="page active">
+      <!-- Create Post -->
+      <div class="create-post">
+        <div class="cp-header">
+          <div class="cp-avatar" id="cpAvatar">👤</div>
+          <input type="text" class="cp-input" id="postInput" placeholder="O que está acontecendo?" onclick="focusPost()">
+        </div>
+        <div class="cp-actions" id="cpActions" style="display:none">
+          <textarea class="cp-textarea" id="postTextarea" placeholder="Compartilhe seu momento..." rows="3"></textarea>
+          <div class="cp-tools">
+            <button class="cp-tool" onclick="addMedia('photo')">📷</button>
+            <button class="cp-tool" onclick="addMedia('video')">🎥</button>
+            <button class="cp-tool" onclick="addMedia('audio')">🎵</button>
+            <input type="text" class="cp-hashtags" id="postHashtags" placeholder="#hashtags">
+            <button class="btn-post" onclick="createPost()">Postar</button>
+          </div>
+          <div id="mediaPreview" class="media-preview" style="display:none"></div>
+        </div>
+      </div>
+
+      <div id="feedContainer" class="feed-container"></div>
+      <div class="feed-loader" id="feedLoader"><div class="loader-bar"></div></div>
+    </div>
+
+    <div id="pageLives" class="page">
+      <div class="lives-header">
+        <h2>🎥 Lives Agora</h2>
+        <button class="btn-primary btn-live" onclick="createLive()">🔴 Criar Live</button>
+      </div>
+      <div id="livesContainer" class="lives-grid"></div>
+    </div>
+
+    <div id="pageSearch" class="page">
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Buscar pessoas, posts, lives..." oninput="doSearch(this.value)">
+        <button class="btn-search" onclick="doSearch(document.getElementById('searchInput').value)">🔍</button>
+      </div>
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <div id="pageChat" class="page">
+      <div class="chat-header">
+        <h2>💬 Conversas</h2>
+        <button class="btn-icon" onclick="newChat()">✏️</button>
+      </div>
+      <div id="chatsContainer" class="chats-list"></div>
+      <div id="chatMessages" class="chat-messages hidden">
+        <div class="chat-msg-header">
+          <button class="btn-icon" onclick="closeChat()">⬅</button>
+          <span id="chatPartnerName"></span>
+          <button class="btn-icon" onclick="reportChat()" title="Denunciar conversa">🚩</button>
+        </div>
+        <div id="messagesContainer" class="messages-container"></div>
+        <div class="chat-input-area">
+          <button class="btn-icon" onclick="sendChatMedia('photo')" title="Enviar foto">📷</button>
+          <button class="btn-icon" onclick="sendChatMedia('video')" title="Enviar vídeo">🎥</button>
+          <button class="btn-icon" onclick="sendChatMedia('audio')" title="Enviar áudio">🎵</button>
+          <input type="file" id="chatMediaInput" accept="image/*,video/*,audio/*" style="display:none">
+          <input type="text" id="chatInput" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="btn-send" onclick="sendMessage()">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pageProfile" class="page">
+      <div id="profileContainer"></div>
+    </div>
+
+    <div id="pageWallet" class="page">
+      <div id="walletContainer"></div>
+    </div>
+
+    <div id="pageAdmin" class="page hidden">
+      <div id="adminContainer"></div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="switchPage('Feed')" data-page="Feed">🏠<span>Feed</span></button>
+      <button class="nav-btn" onclick="switchPage('Lives')" data-page="Lives">🎥<span>Lives</span></button>
+      <button class="nav-btn" onclick="switchPage('Search')" data-page="Search">🔍<span>Buscar</span></button>
+      <button class="nav-btn" onclick="switchPage('Chat')" data-page="Chat">💬<span>Chat</span></button>
+      <button class="nav-btn" onclick="switchPage('Profile')" data-page="Profile">👤<span>Perfil</span></button>
+    </nav>
+
+    <!-- RODAPÉ LEGAL -->
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="/privacy">Política de Privacidade</a>
+        <a href="/terms">Termos de Uso</a>
+        <a href="/contact">Contato</a>
+        <a href="/delete-account">Deletar Conta</a>
+      </div>
+      <div class="footer-store">
+        <a href="/download" class="store-badge" style="text-decoration:none;cursor:pointer;border-color:rgba(76,201,240,.45);color:#4cc9f0">📲 Baixar APK</a>
+        <span class="store-badge play">📱 Disponível em breve na Google Play</span>
+        <span class="store-badge">Em breve na AppGallery</span>
+        <span class="store-badge">Em breve na Amazon Appstore</span>
+      </div>
+      <p class="footer-copy">© 2026 VibeStream — Conectando pessoas</p>
+    </footer>
+  </div>
+</div>
+
+
+<!-- POPUP ATIVE NOTIFICAÇÕES (estilo Kwai) -->
+<div id="notifRewardPopup" class="notif-popup hidden">
+  <div class="notif-popup-inner">
+    <div class="notif-popup-close" onclick="closeNotifPopup()">✕</div>
+    <div class="notif-popup-icon">🔔</div>
+    <h3>Ative as notificações</h3>
+    <p>Ative as notificações instantâneas para não perder lives e ganhar recompensas em <b class="k-gold">K Golds</b>.</p>
+    <button class="notif-popup-btn" onclick="claimNotifReward()">Abra e ganhe <span class="k-gold">K +1500</span></button>
+    <button class="notif-popup-skip" onclick="closeNotifPopup()">Agora não</button>
+  </div>
+</div>
+
+<!-- BOAS-VINDAS (vídeo/animacão gerada para o usuário) -->
+<div id="welcomeOverlay" class="welcome-overlay hidden">
+  <div class="welcome-stage">
+    <canvas id="welcomeCanvas"></canvas>
+    <div class="welcome-content">
+      <div class="welcome-logo">🌊</div>
+      <h2 class="welcome-title">Bem-vindo(a), <span id="welcomeName">amigo</span>!</h2>
+      <p class="welcome-sub">Conectando pessoas — VibeStream</p>
+      <div class="welcome-progress"><div class="welcome-bar"></div></div>
+      <button id="welcomeSkip" class="btn-skip">Pular ➤</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

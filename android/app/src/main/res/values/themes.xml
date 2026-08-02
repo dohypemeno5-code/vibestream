@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.VibeStream" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/vibestream_purple</item>
+        <item name="colorPrimaryDark">@color/vibestream_dark</item>
+        <item name="colorAccent">@color/vibestream_pink</item>
+        <item name="android:windowBackground">@color/vibestream_dark</item>
+        <item name="android:statusBarColor">@color/vibestream_dark</item>
+        <item name="android:navigationBarColor">@color/vibestream_dark2</item>
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="Theme.VibeStream.Splash" parent="Theme.VibeStream">
+        <item name="android:windowBackground">@color/vibestream_dark</item>
+        <item name="android:statusBarColor">@color/vibestream_dark</item>
+    </style>
+</resources>

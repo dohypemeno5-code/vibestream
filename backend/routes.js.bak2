@@ -1,0 +1,427 @@
+/**
+ * Rotas da API - Melhora App Live
+ */
+const express = require('express');
+const router = express.Router();
+const bcrypt = require('bcryptjs');
+const uuid = require('uuid');
+
+const sanitizeInput = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.replace(/['"\\;()\-\-]/g, '').replace(/<[^>]*>/g, '').trim();
+};
+
+module.exports = function(database, firewall) {
+  const db = () => database.getInstance();
+
+  // ============================================================
+  // HEALTH CHECK
+  // ============================================================
+  router.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // ============================================================
+  // AUTENTICAÇÃO
+  // ============================================================
+  
+  router.post('/auth/register', async (req, res) => {
+    try {
+      const { username, email, password, displayName } = req.body;
+      if (!username || !email || !password) {
+        return res.status(400).json({ error: 'Username, email e senha são obrigatórios' });
+      }
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+        return res.status(400).json({ error: 'Username inválido (3-30 caracteres, alfanumérico)' });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Email inválido' });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres' });
+      }
+
+      const existing = db().get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email]);
+      if (existing) {
+        return res.status(409).json({ error: 'Username ou email já cadastrado' });
+      }
+
+      const id = uuid.v4();
+      const passwordHash = await bcrypt.hash(password, 10);
+      const ip = req.ip || req.connection.remoteAddress;
+
+      db().run(
+        'INSERT INTO users (id, username, email, password_hash, display_name, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id, username, email, passwordHash, sanitizeInput(displayName || username), ip, sanitizeInput(req.headers['user-agent'] || '')]
+      );
+
+      db().run('INSERT INTO security_logs (id, action, user_id, ip_address) VALUES (?, ?, ?, ?)', [uuid.v4(), 'user_registered', id, ip]);
+
+      res.status(201).json({
+        message: 'Conta criada com sucesso!',
+        user: { id, username, email, displayName: displayName || username }
+      });
+    } catch (error) {
+      console.error('[AUTH] Register error:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  router.post('/auth/login', async (req, res) => {
+    try {
+      const username = sanitizeInput(req.body.username || '');
+      const password = req.body.password || '';
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username e senha são obrigatórios' });
+      }
+
+      const ip = req.ip || req.connection.remoteAddress;
+      
+      const recentAttempts = db().get(
+        "SELECT COUNT(*) as count FROM security_logs WHERE action = 'login_failed' AND ip_address = ? AND created_at > datetime('now', '-5 minutes')",
+        [ip]
+      );
+      if (recentAttempts && recentAttempts.count > 10) {
+        return res.status(429).json({ error: 'Muitas tentativas. Aguarde 5 minutos.' });
+      }
+
+      const user = db().get('SELECT * FROM users WHERE username = ? OR email = ?', [username, username]);
+      if (!user) {
+        db().run('INSERT INTO security_logs (id, action, ip_address) VALUES (?, ?, ?)', [uuid.v4(), 'login_failed', ip]);
+        return res.status(401).json({ error: 'Credenciais inválidas' });
+      }
+
+      const bans = db().query(
+        "SELECT * FROM bans WHERE user_id = ? AND (ban_type = 'permanente' OR (ban_type = 'temporario' AND expires_at > datetime('now')))",
+        [user.id]
+      );
+      if (bans.length > 0) {
+        return res.status(403).json({ error: 'Conta banida', reason: bans[0].reason });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+      if (!validPassword) {
+        db().run('INSERT INTO security_logs (id, action, user_id, ip_address) VALUES (?, ?, ?, ?)', [uuid.v4(), 'login_failed', user.id, ip]);
+        return res.status(401).json({ error: 'Credenciais inválidas' });
+      }
+
+      db().run("UPDATE users SET last_login = datetime('now'), ip_address = ?, user_agent = ? WHERE id = ?",
+        [ip, sanitizeInput(req.headers['user-agent'] || ''), user.id]);
+      db().run('INSERT INTO security_logs (id, action, user_id, ip_address) VALUES (?, ?, ?, ?)', [uuid.v4(), 'user_login', user.id, ip]);
+
+      req.session.userId = user.id;
+      req.session.role = user.role;
+
+      res.json({
+        message: 'Login realizado!',
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          displayName: user.display_name,
+          avatar_url: user.avatar_url,
+          bio: user.bio,
+          role: user.role,
+          coins: user.coins,
+          diamonds: user.diamonds,
+          is_verified: user.is_verified,
+          is_live: user.is_live,
+          followers_count: user.followers_count,
+          following_count: user.following_count,
+          created_at: user.created_at
+        }
+      });
+    } catch (error) {
+      console.error('[AUTH] Login error:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  router.post('/auth/logout', (req, res) => {
+    req.session.destroy(() => {
+      res.json({ message: 'Sessão encerrada' });
+    });
+  });
+
+  router.get('/auth/me', (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
+    const user = db().get(
+      'SELECT id, username, email, display_name, avatar_url, bio, role, is_verified, is_live, coins, diamonds, followers_count, following_count, created_at FROM users WHERE id = ?',
+      [req.session.userId]
+    );
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não encontrado' });
+    }
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.display_name,
+        avatar_url: user.avatar_url,
+        bio: user.bio,
+        role: user.role,
+        is_verified: user.is_verified,
+        is_live: user.is_live,
+        coins: user.coins,
+        diamonds: user.diamonds,
+        followers_count: user.followers_count,
+        following_count: user.following_count,
+        created_at: user.created_at
+      }
+    });
+  });
+
+  // ============================================================
+  // USUÁRIOS
+  // ============================================================
+  
+  router.get('/users', (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const offset = (page - 1) * limit;
+    
+    const users = db().query(
+      "SELECT id, username, display_name, avatar_url, bio, role, is_verified, is_live, followers_count, coins FROM users WHERE status = 'active' ORDER BY followers_count DESC LIMIT ? OFFSET ?",
+      [limit, offset]
+    );
+    const total = (db().get("SELECT COUNT(*) as count FROM users WHERE status = 'active'") || {}).count || 0;
+    
+    res.json({ users, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+  });
+
+  router.get('/users/:id', (req, res) => {
+    const user = db().get(
+      'SELECT id, username, display_name, avatar_url, bio, role, is_verified, is_live, followers_count, following_count, coins, diamonds, created_at FROM users WHERE id = ?',
+      [req.params.id]
+    );
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.json({ user });
+  });
+
+  // ============================================================
+  // LIVES
+  // ============================================================
+  
+  router.get('/lives', (req, res) => {
+    const category = req.query.category || 'todos';
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const offset = (page - 1) * limit;
+
+    let query, countQuery, params;
+    if (category && category !== 'todos') {
+      query = `SELECT l.*, u.username, u.display_name, u.avatar_url FROM lives l JOIN users u ON l.user_id = u.id WHERE l.status = 'live' AND l.category = ? ORDER BY l.viewer_count DESC LIMIT ? OFFSET ?`;
+      countQuery = "SELECT COUNT(*) as count FROM lives WHERE status = 'live' AND category = ?";
+      params = [category, limit, offset];
+    } else {
+      query = `SELECT l.*, u.username, u.display_name, u.avatar_url FROM lives l JOIN users u ON l.user_id = u.id WHERE l.status = 'live' ORDER BY l.viewer_count DESC LIMIT ? OFFSET ?`;
+      countQuery = "SELECT COUNT(*) as count FROM lives WHERE status = 'live'";
+      params = [limit, offset];
+    }
+
+    const lives = db().query(query, params);
+    const total = (db().get(countQuery, category && category !== 'todos' ? [category] : []) || {}).count || 0;
+
+    res.json({ lives, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+  });
+
+  router.post('/lives', (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Não autenticado' });
+    
+    const { title, category, isPrivate, streamType } = req.body;
+    if (!title || title.length < 3) return res.status(400).json({ error: 'Título deve ter no mínimo 3 caracteres' });
+
+    const id = uuid.v4();
+    const streamKey = uuid.v4();
+    
+    db().run(
+      'INSERT INTO lives (id, user_id, title, category, is_private, stream_url, status, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime(\'now\'))',
+      [id, req.session.userId, sanitizeInput(title), sanitizeInput(category || 'geral'), isPrivate ? 1 : 0, `/stream/${streamKey}`, 'live']
+    );
+    db().run('UPDATE users SET is_live = 1, live_title = ? WHERE id = ?', [sanitizeInput(title), req.session.userId]);
+
+    res.status(201).json({
+      message: 'Live criada com sucesso!',
+      live: { id, streamKey, title, category: category || 'geral', status: 'live' }
+    });
+  });
+
+  router.get('/lives/:id', (req, res) => {
+    const live = db().get(
+      `SELECT l.*, u.username, u.display_name, u.avatar_url FROM lives l JOIN users u ON l.user_id = u.id WHERE l.id = ?`,
+      [req.params.id]
+    );
+    if (!live) return res.status(404).json({ error: 'Live não encontrada' });
+    res.json({ live });
+  });
+
+  router.post('/lives/:id/join', (req, res) => {
+    const live = db().get('SELECT * FROM lives WHERE id = ? AND status = ?', [req.params.id, 'live']);
+    if (!live) return res.status(404).json({ error: 'Live não encontrada ou encerrada' });
+    
+    db().run('UPDATE lives SET viewer_count = viewer_count + 1 WHERE id = ?', [req.params.id]);
+    const updated = db().get('SELECT viewer_count FROM lives WHERE id = ?', [req.params.id]);
+    
+    res.json({ message: 'Entrou na live', viewer_count: updated.viewer_count, stream_url: live.stream_url });
+  });
+
+  router.post('/lives/:id/end', (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Não autenticado' });
+    
+    const live = db().get('SELECT * FROM lives WHERE id = ? AND user_id = ?', [req.params.id, req.session.userId]);
+    if (!live) return res.status(404).json({ error: 'Live não encontrada ou não pertence a você' });
+
+    const duration = Math.floor((Date.now() - new Date(live.started_at + 'Z').getTime()) / 1000);
+    
+    db().run("UPDATE lives SET status = 'ended', ended_at = datetime('now'), duration_seconds = ? WHERE id = ?", [duration, req.params.id]);
+    db().run('UPDATE users SET is_live = 0, live_title = ? WHERE id = ?', ['', req.session.userId]);
+    
+    res.json({ message: 'Live encerrada', duration });
+  });
+
+  // ============================================================
+  // FAMÍLIAS
+  // ============================================================
+  
+  router.get('/families', (req, res) => {
+    const families = db().query(
+      `SELECT f.*, u.username as owner_name FROM families f JOIN users u ON f.owner_id = u.id ORDER BY f.total_diamonds DESC LIMIT 50`
+    );
+    res.json({ families });
+  });
+
+  router.post('/families', (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Não autenticado' });
+    const { name, description } = req.body;
+    if (!name || name.length < 3) return res.status(400).json({ error: 'Nome deve ter no mínimo 3 caracteres' });
+
+    const existing = db().get('SELECT id FROM families WHERE name = ?', [name]);
+    if (existing) return res.status(409).json({ error: 'Nome de família já existe' });
+
+    const id = uuid.v4();
+    db().run('INSERT INTO families (id, name, description, owner_id) VALUES (?, ?, ?, ?)',
+      [id, sanitizeInput(name), sanitizeInput(description || ''), req.session.userId]);
+    db().run('INSERT INTO family_members (id, family_id, user_id, role) VALUES (?, ?, ?, ?)',
+      [uuid.v4(), id, req.session.userId, 'owner']);
+
+    res.status(201).json({ message: 'Família criada!', family: { id, name } });
+  });
+
+  router.get('/families/:id', (req, res) => {
+    const family = db().get(
+      `SELECT f.*, u.username as owner_name FROM families f JOIN users u ON f.owner_id = u.id WHERE f.id = ?`,
+      [req.params.id]
+    );
+    if (!family) return res.status(404).json({ error: 'Família não encontrada' });
+
+    const members = db().query(
+      `SELECT fm.*, u.username, u.display_name, u.avatar_url FROM family_members fm JOIN users u ON fm.user_id = u.id WHERE fm.family_id = ?`,
+      [req.params.id]
+    );
+
+    res.json({ family, members });
+  });
+
+  // ============================================================
+  // TICKETS (Denúncias)
+  // ============================================================
+  
+  router.post('/tickets', (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const { ticketType, subject, description, evidenceUrl, reportedUserId, reportedLiveId } = req.body;
+    if (!subject || !description) return res.status(400).json({ error: 'Assunto e descrição são obrigatórios' });
+    if (description.length < 10) return res.status(400).json({ error: 'Descrição deve ter no mínimo 10 caracteres' });
+
+    const ticketId = uuid.v4();
+    db().run(
+      'INSERT INTO tickets (id, user_id, ticket_type, subject, description, evidence_url, reported_user_id, reported_live_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [ticketId, req.session.userId, ticketType || 'denuncia', sanitizeInput(subject), sanitizeInput(description), evidenceUrl || '', reportedUserId || null, reportedLiveId || null]
+    );
+
+    res.status(201).json({ ticketId, message: 'Ticket criado com sucesso! Você receberá uma resposta em breve.' });
+  });
+
+  router.get('/tickets', (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Não autenticado' });
+    const tickets = db().query('SELECT * FROM tickets WHERE user_id = ? ORDER BY created_at DESC', [req.session.userId]);
+    res.json({ tickets });
+  });
+
+  // ============================================================
+  // CATEGORIAS
+  // ============================================================
+  router.get('/categories', (req, res) => {
+    res.json({
+      categories: [
+        { id: 'todos', name: 'Todos', icon: '🔥' },
+        { id: 'geral', name: 'Geral', icon: '📺' },
+        { id: 'games', name: 'Games', icon: '🎮' },
+        { id: 'musica', name: 'Música', icon: '🎵' },
+        { id: 'danca', name: 'Dança', icon: '💃' },
+        { id: 'comedia', name: 'Comédia', icon: '😂' },
+        { id: 'educacao', name: 'Educação', icon: '📚' },
+        { id: 'entrevista', name: 'Entrevista', icon: '🎙️' },
+        { id: 'noticias', name: 'Notícias', icon: '📰' }
+      ]
+    });
+  });
+
+  // ============================================================
+  // REGRAS
+  // ============================================================
+  router.get('/rules', (req, res) => {
+    res.json({
+      rules: {
+        gerais: [
+          'Respeite todos os membros da plataforma',
+          'Não é permitido conteúdo ofensivo, discriminatório ou ilegal',
+          'Proibido compartilhar informações pessoais de outros usuários',
+          'Não faça spam ou divulgue links maliciosos',
+          'Mantenha um ambiente seguro e amigável para todos'
+        ],
+        lives: [
+          'Não transmita conteúdo protegido por direitos autorais',
+          'Proibido mostrar conteúdo adulto ou violento',
+          'Não incentive comportamento perigoso ou ilegal',
+          'Respeite os moderadores e administradores'
+        ],
+        denuncias: [
+          'Denúncias são analisadas em até 24 horas',
+          'Forneça evidências claras ao fazer uma denúncia',
+          'Denúncias falsas resultam em punição ao denunciante'
+        ]
+      }
+    });
+  });
+
+  // ============================================================
+  // RANKING
+  // ============================================================
+  router.get('/ranking', (req, res) => {
+    const type = req.query.type || 'diamonds';
+    const limit = parseInt(req.query.limit) || 20;
+
+    let ranking = [];
+    if (type === 'diamonds') {
+      ranking = db().query(
+        "SELECT id, username, display_name, avatar_url, diamonds, followers_count, is_verified, is_live FROM users WHERE status = 'active' ORDER BY diamonds DESC LIMIT ?", [limit]
+      );
+    } else if (type === 'followers') {
+      ranking = db().query(
+        "SELECT id, username, display_name, avatar_url, followers_count, diamonds, is_verified, is_live FROM users WHERE status = 'active' ORDER BY followers_count DESC LIMIT ?", [limit]
+      );
+    } else if (type === 'families') {
+      ranking = db().query(
+        `SELECT f.*, u.username as owner_name FROM families f JOIN users u ON f.owner_id = u.id ORDER BY f.total_diamonds DESC LIMIT ?`, [limit]
+      );
+    }
+    res.json({ ranking, type });
+  });
+
+  return router;
+};

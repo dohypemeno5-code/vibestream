@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contato — VibeStream</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0a1a;color:#e8e9f5;line-height:1.7}
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+.logo{font-size:1.4rem;font-weight:800;background:linear-gradient(135deg,#a78bfa,#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo small{display:block;font-size:.62rem;color:#8f92b8;font-weight:500;letter-spacing:2px}
+h1{font-size:1.6rem;margin-bottom:6px}
+.updated{color:#8f92b8;font-size:.8rem;margin-bottom:22px}
+h2{font-size:1.05rem;margin:22px 0 8px;color:#b7a6ff}
+p,li{font-size:.92rem;color:#c7c9e2}
+ul{padding-left:20px;margin:8px 0}
+li{margin-bottom:5px}
+a{color:#7c9dff}
+.card{background:#141430;border:1px solid #232348;border-radius:14px;padding:20px;margin-bottom:14px}
+.btn{display:inline-block;padding:12px 26px;border-radius:50px;border:none;font-weight:700;font-size:.95rem;cursor:pointer;text-decoration:none}
+.btn-primary{background:linear-gradient(90deg,#7c5cff,#3d7bff);color:#fff;box-shadow:0 6px 24px rgba(124,92,255,.4)}
+.btn-outline{background:rgba(255,255,255,.05);border:1.5px solid #4d4f78;color:#cfd2f5}
+input{width:100%;padding:13px 16px;border-radius:10px;border:1px solid #2a2a55;background:#10102a;color:#fff;font-size:.95rem;margin-bottom:12px}
+input:focus{outline:none;border-color:#7c5cff}
+.msg{margin-top:14px;padding:13px 16px;border-radius:10px;font-size:.9rem;display:none}
+.msg.ok{display:block;background:rgba(46,213,115,.12);border:1px solid rgba(46,213,115,.4);color:#7ee2a8}
+.msg.err{display:block;background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.4);color:#ff8b96}
+footer{margin-top:40px;border-top:1px solid #1d1d40;padding-top:20px;display:flex;gap:18px;flex-wrap:wrap;font-size:.8rem}
+footer a{color:#8f92b8;text-decoration:none}
+footer a:hover{color:#b7a6ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="logo">🌊 VibeStream<small>CONECTANDO PESSOAS</small></div></div>
+  
+<h1>Contato</h1>
+<p class="updated">Fale com a equipe VibeStream</p>
+<div class="card">
+<p><b>E-mail de suporte:</b> <a href="mailto:suportevibestream@gmail.com">suportevibestream@gmail.com</a></p>
+<p><b>Assuntos:</b> dúvidas, denúncias, recursos de punição, privacidade (LGPD) e imprensa.</p>
+</div>
+<h2>Enviar mensagem</h2>
+<div class="card">
+<form onsubmit="enviarContato(event)">
+  <input type="email" id="ctEmail" placeholder="Seu e-mail" required>
+  <input type="text" id="ctNome" placeholder="Seu nome" required>
+  <input type="text" id="ctAssunto" placeholder="Assunto" required>
+  <input type="text" id="ctMsg" placeholder="Mensagem" required style="min-height:110px">
+  <button type="submit" class="btn btn-primary">Enviar</button>
+  <div class="msg" id="ctMsgBox"></div>
+</form>
+</div>
+<script>
+function enviarContato(e){
+  e.preventDefault();
+  var em=document.getElementById('ctEmail').value, nm=document.getElementById('ctNome').value,
+      as=document.getElementById('ctAssunto').value, ms=document.getElementById('ctMsg').value;
+  var corpo=encodeURIComponent('Nome: '+nm+'\nE-mail: '+em+'\n\n'+ms);
+  window.location.href='mailto:suportevibestream@gmail.com?subject='+encodeURIComponent('[VibeStream] '+as)+'&body='+corpo;
+  document.getElementById('ctMsgBox').className='msg ok';
+  document.getElementById('ctMsgBox').textContent='Abrindo seu aplicativo de e-mail... Também respondemos em suportevibestream@gmail.com.';
+}
+</script>
+
+  <footer>
+    <a href="/privacy">Política de Privacidade</a>
+    <a href="/terms">Termos de Uso</a>
+    <a href="/contact">Contato</a>
+    <a href="/delete-account">Deletar Conta</a>
+    <a href="/">Voltar ao VibeStream</a>
+  </footer>
+</div>
+</body>
+</html>
