@@ -2,7 +2,7 @@
 
 **Plataforma de Live Streaming Real - Estilo Kwai + Jogo VibeStrike 2D**
 
-🌐 **Link Público:** [https://dohypemeno5-code.github.io/vibestream](https://dohypemeno5-code.github.io/vibestream)
+🌐 **Link Público:** [https://vibestreamoficial.github.io/vibestream](https://vibestreamoficial.github.io/vibestream)
 
 > URL do tunnel muda se o cloudflared reiniciar — sempre atualizada em `/tmp/vibestream-url.txt`.
 
@@ -56,7 +56,7 @@ bash /tmp/build-vibestream-aapt.sh          # gera frontend/apk/vibestream.apk
 ## 🔐 Acesso Admin
 
 ```
-Admin (REAL e escondido): https://dohypemeno5-code.github.io/vibestream/admin-vsadm_bbcfb56ec52ae932e6
+Admin (REAL e escondido): https://vibestreamoficial.github.io/vibestream/admin-vsadm_bbcfb56ec52ae932e6
 Usuário: admin
 Senha: Melhora@2024!SecureAdmin
 Secret (header): vsadm_bbcfb56ec52ae932e6
