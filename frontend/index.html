@@ -142,6 +142,33 @@
       <div id="adminContainer"></div>
     </div>
 
+
+    <div id="pageAICreator" class="page">
+      <div class="ai-page">
+        <div class="ai-hero">
+          <div class="ai-hero-badge">✦</div>
+          <h2>VibeAI Creator</h2>
+          <p>Escreva a ideia e a IA cria o vídeo completo — roteiro, capa e legenda.</p>
+        </div>
+        <div class="ai-balance" id="aiBalance">💎 Carregando saldo…</div>
+        <div class="ai-card">
+          <label class="ai-label">💡 Escreva a ideia do seu vídeo</label>
+          <textarea id="aiIdea" class="form-input ai-idea" rows="3" maxlength="500" placeholder="Ex: um dia na vida de um entregador no Rio ao pôr do sol"></textarea>
+          <div id="aiIdeaCount" class="ai-count">0/500</div>
+          <label class="ai-label" style="margin-top:14px">🎨 Escolha o estilo</label>
+          <div class="ai-styles" id="aiStyles"></div>
+          <button class="ai-btn-generate" id="aiGenerateBtn" onclick="aiGenerate()">✦ Gerar Vídeo com IA</button>
+          <p class="ai-cost" id="aiCostText"></p>
+        </div>
+        <div class="ai-progress" id="aiProgress" style="display:none">
+          <div class="ai-progress-bar"><i id="aiProgressFill"></i></div>
+          <p id="aiProgressText">Criando roteiro…</p>
+        </div>
+        <div id="aiPreview"></div>
+        <div class="ai-history" id="aiHistory"></div>
+      </div>
+    </div>
+
     <!-- BOTTOM NAV -->
     <nav class="bottom-nav">
       <button class="nav-btn active" onclick="switchPage('Feed')" data-page="Feed">🏠<span>Feed</span></button>
@@ -149,6 +176,7 @@
       <button class="nav-btn" onclick="switchPage('Search')" data-page="Search">🔍<span>Buscar</span></button>
       <button class="nav-btn" onclick="switchPage('Chat')" data-page="Chat">💬<span>Chat</span></button>
       <button class="nav-btn" onclick="switchPage('Profile')" data-page="Profile">👤<span>Perfil</span></button>
+      <button class="nav-btn ai-nav" onclick="switchPage('AICreator'); aiInit()" data-page="AICreator">✨<span>Criar com IA</span></button>
     </nav>
 
     <!-- RODAPÉ LEGAL -->

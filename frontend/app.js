@@ -2534,3 +2534,342 @@ async function joinFamilyFromModal(id) {
     if (currentPage === 'Profile') loadProfile(currentUser.id);
   } catch (e) { showToast(e.message, 'error'); }
 }
+
+// ============================================================
+// VIBEAI CREATOR — Criar vídeos com IA
+// ============================================================
+let aiState = { style: 'shorts', draft: null, generating: false, timer: null };
+
+function aiInit() {
+  if (!currentUser) { openAuth(); return; }
+  loadAIConfig();
+  loadAIHistory();
+  const idea = document.getElementById('aiIdea');
+  if (idea) idea.oninput = () => {
+    const c = document.getElementById('aiIdeaCount');
+    if (c) c.textContent = idea.value.length + '/500';
+  };
+}
+
+async function loadAIConfig() {
+  try {
+    const d = await api('/ai/config');
+    const bal = document.getElementById('aiBalance');
+    if (bal) bal.innerHTML = `💎 <b>${d.balance}</b> moedas · <span style="color:var(--text3)">${d.dailyUsed}/${d.dailyLimit} hoje</span> <button class="ai-bal-btn" onclick="openEconomy()">+ Recarregar</button>`;
+    const cost = document.getElementById('aiCostText');
+    if (cost) cost.textContent = `Cada geração custa ${d.cost} moedas · limite diário: ${d.dailyLimit} vídeos`;
+    const box = document.getElementById('aiStyles');
+    if (box) {
+      box.innerHTML = d.styles.map(st => `
+        <button class="ai-style ${st.key === aiState.style ? 'active' : ''}" data-key="${st.key}" style="--c1:${st.colors[0]};--c2:${st.colors[st.colors.length - 1]}" onclick="aiSelectStyle('${st.key}', this)">
+          ${st.emoji} ${st.label}
+        </button>`).join('');
+    }
+  } catch (e) { /* sessão expirada */ }
+}
+
+function aiSelectStyle(key, el) {
+  aiState.style = key;
+  document.querySelectorAll('.ai-style').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function aiProgress(percent, text) {
+  const box = document.getElementById('aiProgress');
+  const fill = document.getElementById('aiProgressFill');
+  const label = document.getElementById('aiProgressText');
+  if (!box) return;
+  box.style.display = 'block';
+  if (fill) fill.style.width = percent + '%';
+  if (label) label.textContent = text;
+}
+
+async function aiGenerate() {
+  if (aiState.generating) return;
+  const idea = document.getElementById('aiIdea').value.trim();
+  if (idea.length < 10) { showToast('Escreva uma ideia com pelo menos 10 caracteres', 'error'); return; }
+  aiState.generating = true;
+  const btn = document.getElementById('aiGenerateBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '✦ Gerando…'; }
+  aiProgress(5, 'Analisando a ideia…');
+  const stages = [
+    [20, 'Criando roteiro…'],
+    [45, 'Gerando título e descrição…'],
+    [65, 'Criando hashtags e legenda…'],
+    [85, 'Desenhando a capa…']
+  ];
+  let i = 0;
+  aiState.timer = setInterval(() => {
+    if (i < stages.length) { aiProgress(stages[i][0], stages[i][1]); i++; }
+  }, 900);
+  try {
+    const d = await api('/ai/generate', { method: 'POST', body: JSON.stringify({ idea, style: aiState.style }) });
+    clearInterval(aiState.timer);
+    aiProgress(100, 'Vídeo criado! ✦');
+    setTimeout(() => { const p = document.getElementById('aiProgress'); if (p) p.style.display = 'none'; }, 900);
+    aiState.draft = d.draft;
+    renderAIPreview(d.draft);
+    loadAIConfig();
+    loadAIHistory();
+    showToast(d.message || 'Vídeo criado!', 'success');
+  } catch (e) {
+    clearInterval(aiState.timer);
+    aiProgress(100, 'Falha na geração');
+    setTimeout(() => { const p = document.getElementById('aiProgress'); if (p) p.style.display = 'none'; }, 1200);
+    if (e.status === 402) {
+      openModal(`<div style="max-width:400px;text-align:center;padding:8px">
+        <h3>💎 Moedas insuficientes</h3>
+        <p style="color:var(--text2);font-size:14px;margin:12px 0">A geração com IA custa ${e.data?.cost || 300} moedas. Recarregue para continuar criando.</p>
+        <button class="btn-primary btn-full" onclick="closeModal();openEconomy()">💎 Recarregar moedas</button>
+      </div>`);
+    } else { showToast(e.message, 'error'); }
+  } finally {
+    aiState.generating = false;
+    if (btn) { btn.disabled = false; btn.textContent = '✦ Gerar Vídeo com IA'; }
+  }
+}
+
+function renderAIPreview(d) {
+  if (!d) return;
+  let scriptHtml = '';
+  try {
+    const sc = typeof d.script === 'string' ? JSON.parse(d.script) : d.script;
+    scriptHtml = (sc.scenes || []).map(s => `
+      <div class="ai-scene">
+        <span class="ai-scene-num">▶</span>
+        <div><b>${escapeHtml(s.hook || '')}</b><small>${escapeHtml(s.visual || '')}</small></div>
+      </div>`).join('');
+  } catch (e) {}
+  let htags = d.hashtags;
+  if (typeof htags === 'string') { try { htags = JSON.parse(htags); } catch (e) { htags = []; } }
+  const tags = (htags || []).map(h => '#' + escapeHtml(h)).join(' ');
+  document.getElementById('aiPreview').innerHTML = `
+    <div class="ai-preview">
+      <h3>👀 Pré-visualização <span class="ai-chip">VibeAI ✦</span></h3>
+      <div class="ai-preview-grid">
+        <div class="ai-cover"><img src="${d.cover_url || ''}" alt="Capa gerada"><span class="ai-cover-tag">${(aiState.draft && aiState.draft.style) ? '' : ''}✨ Capa gerada pela IA</span></div>
+        <div class="ai-preview-fields">
+          <label class="ai-label">Título</label>
+          <input id="aiEditTitle" class="form-input" value="${escapeHtml(d.title || '')}" maxlength="120">
+          <label class="ai-label">Descrição</label>
+          <textarea id="aiEditDesc" class="form-input" rows="3" maxlength="1000">${escapeHtml(d.description || '')}</textarea>
+          <label class="ai-label">Legenda</label>
+          <input id="aiEditCaption" class="form-input" value="${escapeHtml(d.caption || '')}" maxlength="300">
+          <label class="ai-label">Hashtags</label>
+          <input id="aiEditTags" class="form-input" value="${escapeHtml(tags)}" maxlength="200">
+          <div class="ai-scenes">${scriptHtml}</div>
+        </div>
+      </div>
+      <div class="ai-actions">
+        <button class="ai-btn-ghost" onclick="aiGenerate()">✦ Regenerar</button>
+        <button class="ai-btn-publish" onclick="aiPublish()">🎬 Publicar no Feed</button>
+        <button class="ai-btn-ghost danger" onclick="aiReport('${d.id}')">🚨 Denunciar</button>
+      </div>
+      <p class="ai-note">Você pode editar tudo antes de publicar. O vídeo é montado no seu aparelho e publicado no Feed.</p>
+    </div>`;
+}
+
+function aiPublish() {
+  const d = aiState.draft;
+  if (!d) return;
+  const title = document.getElementById('aiEditTitle')?.value || d.title;
+  const description = document.getElementById('aiEditDesc')?.value || d.description;
+  const caption = document.getElementById('aiEditCaption')?.value || d.caption;
+  const tagsRaw = document.getElementById('aiEditTags')?.value || '';
+  const hashtags = tagsRaw.split(/[,\s#]+/).map(h => h.trim()).filter(Boolean).slice(0, 10);
+  openModal(`
+    <div class="report-modal" style="max-width:420px">
+      <h3>🎬 Gerando seu vídeo</h3>
+      <p style="color:var(--text2);font-size:13px;margin:10px 0">A IA está montando o vídeo com seu roteiro… <b>não feche esta janela.</b></p>
+      <div class="ai-progress" style="display:block">
+        <div class="ai-progress-bar"><i id="pubProgressFill" style="width:10%"></i></div>
+        <p id="pubProgressText" style="font-size:12px;color:var(--text3)">Renderizando cenas…</p>
+      </div>
+    </div>
+  `);
+  makeAIVideo(d, title)
+    .then(async (videoDataUrl) => {
+      const p = document.getElementById('pubProgressFill');
+      const t = document.getElementById('pubProgressText');
+      if (p) p.style.width = '70%';
+      if (t) t.textContent = 'Enviando para o servidor…';
+      const up = await api('/media', { method: 'POST', body: JSON.stringify({ dataUrl: videoDataUrl }) });
+      if (p) p.style.width = '90%';
+      if (t) t.textContent = 'Publicando no Feed…';
+      const pub = await api(`/ai/drafts/${d.id}/publish`, {
+        method: 'POST',
+        body: JSON.stringify({ videoUrl: up.url, title, description, caption, hashtags })
+      });
+      if (p) p.style.width = '100%';
+      if (t) t.textContent = 'Publicado! ✦';
+      closeModal();
+      showToast('🎬 Vídeo publicado no Feed!', 'success');
+      document.getElementById('aiPreview').innerHTML = '';
+      aiState.draft = null;
+      loadAIHistory();
+      loadAIConfig();
+    })
+    .catch((e) => {
+      closeModal();
+      showToast(e.message || 'Falha ao gerar o vídeo', 'error');
+    });
+}
+
+// Monta o vídeo no canvas (tipografia animada estilo IA) e devolve dataURL webm
+function makeAIVideo(d, title) {
+  return new Promise((resolve, reject) => {
+    const W = 720, H = 1280;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const styleMap = {
+      realista: ['#0f2027', '#203a43', '#2c5364'],
+      animacao: ['#6a11cb', '#2575fc'],
+      cinematografico: ['#141e30', '#243b55', '#0b0f1a'],
+      trailer: ['#20002c', '#cbb4d4'],
+      shorts: ['#ff0084', '#33001b']
+    };
+    const colors = styleMap[d.style] || styleMap.shorts;
+    let scenes = [];
+    try { scenes = (typeof d.script === 'string' ? JSON.parse(d.script) : d.script).scenes || []; } catch (e) {}
+    const lines = [title, ...scenes.map(s => s.hook || '')].slice(0, 6);
+    const stream = canvas.captureStream(30);
+    const mime = (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) ? 'video/webm;codecs=vp9' : 'video/webm';
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2500000 });
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error('Erro ao ler o vídeo gerado'));
+      fr.readAsDataURL(blob);
+    };
+    rec.start();
+    const totalFrames = 30 * 8; // 8 segundos
+    let frame = 0;
+    const draw = () => {
+      const t = frame / totalFrames;
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      colors.forEach((c, i) => grad.addColorStop(i / (colors.length - 1 || 1), c));
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      // brilho
+      ctx.fillStyle = 'rgba(124,58,237,0.25)';
+      ctx.beginPath();
+      ctx.arc(W * 0.2, H * 0.25, 180 + 40 * Math.sin(t * 6), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(6,182,212,0.2)';
+      ctx.beginPath();
+      ctx.arc(W * 0.85, H * 0.8, 200 + 40 * Math.cos(t * 5), 0, Math.PI * 2);
+      ctx.fill();
+      // marca
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('✦ VibeAI', 40, 70);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = '18px sans-serif';
+      ctx.fillText('VibeStream · Conectando pessoas', 40, 100);
+      // texto central
+      const lineIdx = Math.min(Math.floor(t * lines.length), lines.length - 1);
+      const line = lines[lineIdx] || '';
+      const appear = Math.min(1, (t * lines.length - lineIdx) * 3);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,' + (0.35 * appear) + ')';
+      ctx.fillRect(W / 2 - 320, H / 2 - 190, 640, 260);
+      ctx.strokeStyle = 'rgba(124,58,237,0.9)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(W / 2 - 320, H / 2 - 190, 640, 260);
+      ctx.fillStyle = 'rgba(255,255,255,' + appear + ')';
+      ctx.font = 'bold 34px sans-serif';
+      wrapText(ctx, line, W / 2, H / 2 - 60, 560, 44);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * appear) + ')';
+      ctx.font = '20px sans-serif';
+      ctx.fillText('✦', W / 2, H / 2 + 150 + Math.sin(t * 8) * 8);
+      // progresso
+      ctx.fillStyle = 'rgba(124,58,237,0.9)';
+      ctx.fillRect(40, H - 60, (W - 80) * t, 6);
+      frame++;
+      if (frame <= totalFrames) requestAnimationFrame(draw);
+      else rec.stop();
+    };
+    draw();
+    const timer = setTimeout(() => { try { rec.stop(); } catch (e) {} }, 15000);
+    rec.onstop = (ev) => {
+      clearTimeout(timer);
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error('Erro ao ler o vídeo gerado'));
+      fr.readAsDataURL(blob);
+    };
+  });
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const words = String(text).split(' ');
+  let line = '';
+  let ly = y;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, ly);
+      line = w; ly += lineH;
+    } else line = test;
+  }
+  ctx.fillText(line, x, ly);
+}
+
+async function loadAIHistory() {
+  const box = document.getElementById('aiHistory');
+  if (!box) return;
+  try {
+    const d = await api('/ai/drafts');
+    if (!d.drafts || !d.drafts.length) {
+      box.innerHTML = `<div class="ai-history-title">📂 Histórico</div><p class="ai-empty">Você ainda não criou vídeos com IA.</p>`;
+      return;
+    }
+    const statusMap = { ready: 'Pronto', published: 'Publicado ✓', generating: 'Gerando…', denied: 'Bloqueado', deleted: 'Removido' };
+    box.innerHTML = `<div class="ai-history-title">📂 Histórico (${d.drafts.length})</div>` + d.drafts.map(v => `
+      <div class="ai-hist-item" onclick="${v.status === 'ready' ? `aiLoadDraft('${v.id}')` : ''}" style="${v.status === 'ready' ? 'cursor:pointer' : ''}">
+        <div class="ai-hist-cover">${v.cover_url ? `<img src="${v.cover_url}" alt="">` : '✦'}</div>
+        <div style="flex:1;min-width:0">
+          <b>${escapeHtml(v.title || v.idea || 'Sem título')}</b>
+          <small>${escapeHtml(v.idea || '').slice(0, 60)}</small>
+        </div>
+        <span class="ai-status st-${v.status}">${statusMap[v.status] || v.status}</span>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function aiLoadDraft(id) {
+  try {
+    const d = await api('/ai/drafts/' + id);
+    aiState.draft = d.draft;
+    renderAIPreview(d.draft);
+    document.getElementById('aiPreview').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function aiReport(id) {
+  if (!currentUser) { openAuth(); return; }
+  openModal(`
+    <div class="report-modal">
+      <h3>🚨 Denunciar vídeo VibeAI</h3>
+      <p style="font-size:13px;color:var(--text2)">Descreva o motivo da denúncia. Vídeos que violam as regras são removidos e o autor pode ser punido.</p>
+      <textarea id="aiReportReason" class="form-input" rows="4" placeholder="Ex: conteúdo proibido pelas regras da plataforma"></textarea>
+      <button class="btn-primary btn-full" onclick="submitAIReport('${id}')">Enviar denúncia</button>
+    </div>
+  `);
+}
+
+async function submitAIReport(id) {
+  const reason = document.getElementById('aiReportReason')?.value;
+  if (!reason || reason.trim().length < 5) { showToast('Descreva o motivo da denúncia', 'error'); return; }
+  try {
+    const d = await api(`/ai/drafts/${id}/report`, { method: 'POST', body: JSON.stringify({ reason }) });
+    closeModal();
+    showToast(d.message || 'Denúncia enviada!', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+}

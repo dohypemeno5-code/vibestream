@@ -524,6 +524,56 @@ module.exports = function(db) {
     } catch (e) { console.error('[MIGRATION] proteção infantil:', e.message); }
 
     // ============================================================
+    // VIBEAI CREATOR: drafts, logs, uso diário e denúncias
+    // ============================================================
+    try {
+      db.run(`CREATE TABLE IF NOT EXISTS ai_drafts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        idea TEXT DEFAULT '',
+        style TEXT DEFAULT 'shorts',
+        title TEXT DEFAULT '',
+        description TEXT DEFAULT '',
+        script TEXT DEFAULT '',
+        hashtags TEXT DEFAULT '[]',
+        caption TEXT DEFAULT '',
+        cover_url TEXT DEFAULT '',
+        video_url TEXT DEFAULT '',
+        status TEXT DEFAULT 'ready',
+        credits_cost INTEGER DEFAULT 0,
+        published_post_id TEXT DEFAULT '',
+        moderation_note TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS ai_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT DEFAULT '',
+        action TEXT DEFAULT '',
+        status TEXT DEFAULT '',
+        details TEXT DEFAULT '',
+        ip TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS ai_usage (
+        user_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        count INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, day)
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS ai_reports (
+        id TEXT PRIMARY KEY,
+        draft_id TEXT DEFAULT '',
+        reporter_id TEXT DEFAULT '',
+        reason TEXT DEFAULT '',
+        status TEXT DEFAULT 'pendente',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`);
+      try { db.run("CREATE INDEX IF NOT EXISTS idx_ai_drafts_user ON ai_drafts(user_id, created_at)"); } catch (e) {}
+      console.log('[MIGRATION] ✅ VibeAI Creator: ai_drafts + ai_logs + ai_usage + ai_reports');
+    } catch (e) { console.error('[MIGRATION] VibeAI:', e.message); }
+
+    // ============================================================
     // SEED 3 FAMÍLIAS DE TESTE: TROPA DO A [TDA], FERRARI OFC [FR], ELITE [ELT]
     // ============================================================
     try {

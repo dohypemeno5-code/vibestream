@@ -337,6 +337,7 @@ app.use('/api', require('./routes-vibestream')(db));
 app.use('/api', require('./creators')(db));
 app.use('/api', require('./routes-families')(db));
 app.use('/api', require('./routes-moderation')(db));
+app.use('/api', require('./routes-ai')(db));
 
 // Economia: presentes, moedas, VIP e recargas
 app.use('/api', require('./routes-economy')(db, firewall));

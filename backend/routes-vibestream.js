@@ -50,7 +50,7 @@ function saveBase64Media(dataUrl, extHint) {
   // Tamanho máximo (12MB) e validação de MIME permitido
   const approxBytes = Math.ceil(base64.length * 3 / 4);
   if (approxBytes > 12 * 1024 * 1024) return { error: 'too_large' };
-  const map = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif', 'video/mp4': '.mp4', 'audio/mpeg': '.mp3', 'audio/ogg': '.ogg', 'audio/webm': '.webm' };
+  const map = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif', 'video/mp4': '.mp4', 'video/webm': '.webm', 'audio/mpeg': '.mp3', 'audio/ogg': '.ogg', 'audio/webm': '.webm' };
   const ext = map[mime];
   if (!ext) return null; // MIME não permitido -> rejeita
   const buf = Buffer.from(base64, 'base64');
