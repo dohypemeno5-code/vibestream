@@ -64,3 +64,70 @@ td { color: #ccc; }
   background: rgba(46,213,115,.12); border: 1px solid rgba(46,213,115,.45);
   color: #7ee2a8; font-size: 11.5px; font-weight: 700; border-radius: 30px;
 }
+
+/* ============================================================
+   VIBEGUARD AI — segurança e moderação
+   ============================================================ */
+.vg-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+@media (max-width: 700px) { .vg-stats { grid-template-columns: repeat(2, 1fr); } }
+.vg-stat {
+  background: linear-gradient(160deg, #1f1f3a, #17172c);
+  border: 1px solid #2a2a4a; border-radius: 14px; padding: 14px;
+  text-align: center;
+}
+.vg-stat b {
+  display: block; font-size: 24px; font-weight: 900;
+  background: linear-gradient(135deg, #6C5CE7, #4cc9f0);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.vg-stat small { color: #8a8aa5; font-size: 11px; }
+.vg-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .vg-cols { grid-template-columns: 1fr; } }
+.vg-item {
+  background: #1a1a2e; border: 1px solid #2a2a4a;
+  border-radius: 12px; padding: 14px; margin-bottom: 10px;
+}
+.vg-item.pri-high { border-color: rgba(255, 45, 85, .55); box-shadow: 0 0 18px rgba(255, 45, 85, .12); }
+.vg-item.pri-med { border-color: rgba(245, 158, 11, .45); }
+.vg-item.pri-low { border-color: rgba(59, 130, 246, .35); }
+.vg-item-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 6px; }
+.vg-tag {
+  display: inline-block; padding: 3px 10px; border-radius: 30px;
+  background: rgba(108, 92, 231, .18); color: #a99ff8; font-size: 11px; font-weight: 700;
+}
+.vg-tag.critical { background: rgba(255, 45, 85, .2); color: #ff6b81; animation: vgBlink 1.2s infinite; }
+@keyframes vgBlink { 50% { opacity: .55; } }
+.vg-date { font-size: 11px; color: #6b6b80; white-space: nowrap; }
+.vg-item p { font-size: 13px; color: #c6c6de; margin: 4px 0; }
+.vg-reason { color: #a0a0b8 !important; font-size: 12.5px !important; }
+.vg-ev a { color: #4cc9f0; font-size: 12px; }
+.vg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.vg-btn {
+  border: 1px solid #3a3a5a; background: #232342; color: #c6c6de;
+  border-radius: 8px; padding: 6px 12px; font-size: 11.5px; cursor: pointer;
+}
+.vg-btn.ok { background: rgba(16, 185, 129, .15); border-color: rgba(16, 185, 129, .5); color: #6ee7b7; }
+.vg-btn.warn { background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .5); color: #fcd34d; }
+.vg-btn.danger { background: rgba(255, 45, 85, .12); border-color: rgba(255, 45, 85, .5); color: #ff8fa3; }
+.vg-chat-box {
+  height: 300px; overflow-y: auto; background: #141428;
+  border: 1px solid #2a2a4a; border-radius: 12px; padding: 12px; margin-bottom: 10px;
+}
+.vg-msg { padding: 8px 10px; border-radius: 10px; margin-bottom: 8px; background: #1e1e38; }
+.vg-msg b { color: #a99ff8; font-size: 12.5px; display: block; }
+.vg-msg span { font-size: 13px; color: #e2e2f2; display: block; margin-top: 2px; }
+.vg-msg small { font-size: 10.5px; color: #6b6b80; }
+.vg-msg.alert { background: rgba(255, 45, 85, .12); border: 1px solid rgba(255, 45, 85, .35); }
+.vg-msg.alert b { color: #ff6b81; }
+.vg-msg.system { background: rgba(108, 92, 231, .12); border: 1px solid rgba(108, 92, 231, .35); }
+.vg-chat-input { display: flex; gap: 8px; }
+.vg-chat-input input {
+  flex: 1; padding: 11px; border-radius: 10px; border: 1px solid #2a2a4a;
+  background: #1a1a2e; color: #fff; font-size: 13px; outline: none;
+}
+.vg-chat-input input:focus { border-color: #6C5CE7; }
+.vg-chat-input button {
+  border: 0; border-radius: 10px; padding: 0 18px;
+  background: linear-gradient(135deg, #6C5CE7, #4cc9f0); color: #fff;
+  font-size: 15px; cursor: pointer;
+}

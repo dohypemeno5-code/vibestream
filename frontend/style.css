@@ -1396,6 +1396,11 @@ select.form-input {
 }
 .ai-scene b { display: block; font-size: 12.5px; color: var(--text1); }
 .ai-scene small { color: var(--text3); font-size: 11px; }
+.ai-saved-chip {
+  display: inline-block; margin: 10px 0 2px; padding: 6px 14px;
+  background: rgba(16,185,129,.14); border: 1px solid rgba(16,185,129,.45);
+  color: #6ee7b7; font-size: 12px; font-weight: 700; border-radius: 30px;
+}
 .ai-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .ai-btn-publish {
   flex: 1; border: none; border-radius: 12px; padding: 12px;

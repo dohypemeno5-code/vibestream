@@ -34,6 +34,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary)}
 textarea{min-height:90px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr;gap:0 12px}
 @media(min-width:640px){.row2{grid-template-columns:1fr 1fr}}
+.anon-box{display:flex;align-items:flex-start;gap:10px;background:rgba(108,92,231,.10);border:1px dashed #6C5CE7aa;border-radius:12px;padding:12px;margin-bottom:13px;cursor:pointer}
+.anon-box input{width:18px;height:18px;margin-top:2px;flex-shrink:0}
+.anon-box b{font-size:13.5px}
+.anon-box small{color:var(--muted);font-size:11.5px;line-height:1.45;display:block;margin-top:2px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary2));transition:transform .12s,opacity .2s}
 .btn:active{transform:scale(.97)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
@@ -117,6 +121,11 @@ a{color:#9db8ff}
       <input type="url" id="evidence" placeholder="https://…" maxlength="500">
     </div>
 
+    <label class="anon-box">
+      <input type="checkbox" id="anonChk">
+      <span><b>🕵️ Denunciar anonimamente</b><br><small>Sua identidade fica totalmente protegida — só a equipe de segurança vê o caso, sem seu nome.</small></span>
+    </label>
+
     <button class="btn" id="submitBtn" onclick="submitReport()">🚨 Enviar denúncia</button>
     <div class="status" id="formStatus"></div>
   </div>
@@ -181,6 +190,7 @@ a{color:#9db8ff}
     var reason = document.getElementById('reason').value;
     var description = document.getElementById('description').value.trim();
     var evidence = document.getElementById('evidence').value.trim();
+    var anonymous = document.getElementById('anonChk').checked;
 
     if (!target){ setStatus(st, 'Informe o usuário denunciado (username ou ID).'); return; }
     if (!reason){ setStatus(st, 'Selecione o motivo da denúncia.'); return; }
@@ -189,18 +199,31 @@ a{color:#9db8ff}
     btn.disabled = true;
     setStatus(st, 'Enviando…');
     try {
-      await api('/reports/create', {
-        method: 'POST',
-        body: {
-          reportedUserId: target,
-          contentId: contentId || undefined,
-          contentType: contentType || 'user',
-          reason: reason,
-          description: description,
-          evidenceUrl: evidence || undefined
-        }
-      });
-      setStatus(st, '✅ Denúncia registrada! Nossa equipe vai analisar.', true);
+      if (anonymous) {
+        await api('/vibeguard/report-anonymous', {
+          method: 'POST',
+          body: {
+            reportedUserId: target,
+            contentId: contentId || undefined,
+            contentType: contentType || 'user',
+            reason: (reason || 'denúncia') + (description ? ' — ' + description : ''),
+            evidenceUrl: evidence || undefined
+          }
+        });
+      } else {
+        await api('/reports/create', {
+          method: 'POST',
+          body: {
+            reportedUserId: target,
+            contentId: contentId || undefined,
+            contentType: contentType || 'user',
+            reason: reason,
+            description: description,
+            evidenceUrl: evidence || undefined
+          }
+        });
+      }
+      setStatus(st, anonymous ? '✅ Denúncia anônima registrada! Sua identidade está protegida.', true);
       document.getElementById('description').value = '';
       document.getElementById('evidence').value = '';
       document.getElementById('contentId').value = '';

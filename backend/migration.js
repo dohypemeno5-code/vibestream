@@ -733,6 +733,70 @@ module.exports = function(db) {
       )`);
     } catch (e) { console.error('[MIGRATION] limpeza bans:', e.message); }
 
+    // ============================================================
+    // VIBEGUARD AI — segurança e moderação (bots + equipe)
+    // ============================================================
+    try {
+      db.run(`CREATE TABLE IF NOT EXISTS vg_flags (
+        id TEXT PRIMARY KEY,
+        created_at TEXT DEFAULT (datetime('now')),
+        user_id TEXT,
+        content_type TEXT DEFAULT '',
+        content_id TEXT DEFAULT '',
+        flag_type TEXT DEFAULT '',
+        label TEXT DEFAULT '',
+        severity TEXT DEFAULT 'medium',
+        source TEXT DEFAULT 'vibeguard',
+        resolved INTEGER DEFAULT 0,
+        resolved_by TEXT,
+        resolved_at TEXT
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS vg_observations (
+        id TEXT PRIMARY KEY,
+        created_at TEXT DEFAULT (datetime('now')),
+        target_type TEXT DEFAULT '',
+        target_id TEXT DEFAULT '',
+        risk TEXT DEFAULT 'low',
+        reason TEXT DEFAULT '',
+        details TEXT DEFAULT ''
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS vg_actions (
+        id TEXT PRIMARY KEY,
+        created_at TEXT DEFAULT (datetime('now')),
+        moderator_id TEXT,
+        action_type TEXT DEFAULT '',
+        target_type TEXT DEFAULT '',
+        target_id TEXT DEFAULT '',
+        note TEXT DEFAULT '',
+        source TEXT DEFAULT 'vibeguard'
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS vg_chat (
+        id TEXT PRIMARY KEY,
+        created_at TEXT DEFAULT (datetime('now')),
+        user_id TEXT,
+        kind TEXT DEFAULT 'chat',
+        message TEXT DEFAULT '',
+        case_ref TEXT DEFAULT ''
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS vg_reports (
+        id TEXT PRIMARY KEY,
+        created_at TEXT DEFAULT (datetime('now')),
+        content_type TEXT DEFAULT '',
+        content_id TEXT DEFAULT '',
+        reported_user_id TEXT,
+        reporter_id TEXT,
+        anonymous INTEGER DEFAULT 0,
+        reason TEXT NOT NULL,
+        evidence_url TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending' CHECK(status IN ('pending','analyzing','accepted','rejected','hidden')),
+        priority INTEGER DEFAULT 0,
+        notes TEXT DEFAULT '',
+        reviewed_by TEXT,
+        reviewed_at TEXT
+      )`);
+      console.log('[MIGRATION] ✅ VibeGuard AI (vg_flags, vg_observations, vg_actions, vg_chat, vg_reports)');
+    } catch (e) { console.error('[MIGRATION] vibeguard:', e.message); }
+
     db.save();
     console.log('[MIGRATION] ✅ Todas as migrações aplicadas com sucesso!');
   } catch (error) {

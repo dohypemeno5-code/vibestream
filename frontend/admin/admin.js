@@ -78,6 +78,7 @@ function showTab(tab) {
   if (tab === 'economy') loadEconomy();
   if (tab === 'agencies') loadAgencies();
   if (tab === 'alerts') loadAlerts();
+  if (tab === 'vibeguard') loadVibeGuard();
 }
 
 // Esconde ferramentas só-de-admin para moderadores
@@ -797,4 +798,171 @@ async function loadAlerts() {
   } catch (e) {
     document.getElementById('alertsContainer').innerHTML = '<p style="color:#ff4757;padding:20px">Erro: ' + escapeHtml(e.message) + '</p>';
   }
+}
+
+// ============================================================
+// VIBEGUARD AI — Bots de moderação/observação + chat da equipe
+// ============================================================
+let vgChatTimer = null;
+
+function esc(str) { return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+async function loadVibeGuard() {
+  loadVGStats();
+  loadVGQueue();
+  loadVGFlags();
+  loadVGActions();
+  loadVGChat();
+  if (vgChatTimer) clearInterval(vgChatTimer);
+  vgChatTimer = setInterval(() => { try { loadVGChat(true); } catch (e) {} }, 8000);
+}
+
+async function loadVGStats() {
+  const box = document.getElementById('vgStats');
+  if (!box) return;
+  try {
+    const d = await api(ADMIN_API + '/vibeguard/stats');
+    const s = d.data || {};
+    box.innerHTML = `
+      <div class="vg-stat"><b>${s.reportsPending || 0}</b><small>Denúncias pendentes</small></div>
+      <div class="vg-stat"><b>${s.highRisk || 0}</b><small>Flags alto risco</small></div>
+      <div class="vg-stat"><b>${s.reviewsPending || 0}</b><small>Posts em revisão</small></div>
+      <div class="vg-stat"><b>${s.actionsToday || 0}</b><small>Ações hoje</small></div>
+      <div class="vg-stat"><b>${s.anonymousReports || 0}</b><small>Denúncias anônimas</small></div>
+      <div class="vg-stat"><b>${s.flagsOpen || 0}</b><small>Flags abertas</small></div>
+      <div class="vg-stat"><b>${s.alerts || 0}</b><small>Alertas hoje</small></div>
+      <div class="vg-stat"><b>${s.chatMessages || 0}</b><small>Msgs da equipe</small></div>`;
+  } catch (e) { box.innerHTML = '<p style="color:#ff4757;padding:12px">Erro: ' + esc(e.message) + '</p>'; }
+}
+
+async function loadVGQueue() {
+  const box = document.getElementById('vgQueue');
+  if (!box) return;
+  try {
+    const d = await api(ADMIN_API + '/vibeguard/queue');
+    const q = d.data || {};
+    let html = '';
+    const reports = (q.reports || []).map(r => `
+      <div class="vg-item pri-${r.priority >= 80 ? 'high' : r.priority >= 40 ? 'med' : 'low'}">
+        <div class="vg-item-head">
+          <span class="vg-tag">🛡️ Denúncia ${r.anonymous ? 'anônima' : ''} · prioridade ${r.priority}</span>
+          <span class="vg-date">${esc(r.created_at || '')}</span>
+        </div>
+        <p><b>${esc(r.content_type || '')}</b>${r.content_id ? ' · ' + esc(String(r.content_id).slice(0, 14)) : ''}${r.reported_username ? ' · usuário @' + esc(r.reported_username) : ''}</p>
+        <p class="vg-reason">${esc(r.reason || '')}</p>
+        ${r.evidence_url ? `<p class="vg-ev"><a href="${esc(r.evidence_url)}" target="_blank" rel="noopener">🔗 Prova</a></p>` : ''}
+        <div class="vg-actions">
+          <button class="vg-btn ok" onclick="vgResolve('${r.id}','accepted')">✅ Aceitar</button>
+          <button class="vg-btn warn" onclick="vgResolve('${r.id}','analyzing')">🔍 Analisar</button>
+          <button class="vg-btn danger" onclick="vgResolve('${r.id}','rejected')">↩️ Rejeitar</button>
+          <button class="vg-btn" onclick="vgPunish('${r.id}','warning')">⚠️ Aviso</button>
+          <button class="vg-btn" onclick="vgPunish('${r.id}','suspend')">⏸️ Suspender</button>
+          <button class="vg-btn danger" onclick="vgPunish('${r.id}','ban')">🚫 Banir</button>
+        </div>
+      </div>`).join('');
+    const reviews = (q.reviews || []).map(r => `
+      <div class="vg-item">
+        <div class="vg-item-head"><span class="vg-tag">📝 Post em revisão</span><span class="vg-date">${esc(r.created_at || '')}</span></div>
+        <p><b>@${esc(r.author_username || '')}</b>: ${esc((r.post_text || r.title || '').slice(0, 120))}</p>
+        <div class="vg-actions">
+          <button class="vg-btn ok" onclick="vgReviewPost('${r.post_id}','approve')">✅ Aprovar</button>
+          <button class="vg-btn danger" onclick="vgReviewPost('${r.post_id}','remove')">🗑️ Remover</button>
+          <button class="vg-btn" onclick="vgReviewPost('${r.post_id}','flag')">🚩 Sinalizar</button>
+        </div>
+      </div>`).join('');
+    const flags = (q.flags || []).map(f => `
+      <div class="vg-item">
+        <div class="vg-item-head"><span class="vg-tag ${f.severity === 'critical' ? 'critical' : ''}">🚩 ${esc(f.severity || '')}</span><span class="vg-date">${esc(f.created_at || '')}</span></div>
+        <p><b>@${esc(f.username || '')}</b> — ${esc(f.label || '')} <small style="opacity:.6">(${esc(f.content_type || '')})</small></p>
+      </div>`).join('');
+    html += reports + reviews + flags;
+    box.innerHTML = html || '<p style="color:#6b6b80;padding:20px">Fila limpa — nada pendente 🎉</p>';
+  } catch (e) { box.innerHTML = '<p style="color:#ff4757;padding:20px">Erro: ' + esc(e.message) + '</p>'; }
+}
+
+async function vgResolve(id, decision) {
+  const notes = prompt('Notas da análise (opcional):') || '';
+  try {
+    await api(ADMIN_API + '/vibeguard/reports/' + id + '/resolve', { method: 'POST', body: JSON.stringify({ decision, notes }) });
+    loadVGQueue(); loadVGStats(); loadVGActions(); loadVGChat();
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+async function vgPunish(id, punishment) {
+  const notes = prompt(punishment === 'ban' ? 'Motivo do banimento:' : punishment === 'suspend' ? 'Motivo da suspensão (dias):' : 'Motivo do aviso:') || '';
+  try {
+    await api(ADMIN_API + '/vibeguard/reports/' + id + '/resolve', { method: 'POST', body: JSON.stringify({ decision: 'accepted', notes, punishment }) });
+    loadVGQueue(); loadVGStats(); loadVGActions(); loadVGChat();
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+async function vgReviewPost(postId, decision) {
+  const reason = decision === 'remove' ? (prompt('Motivo da remoção:') || 'Removido pela moderação') : '';
+  try {
+    await api(ADMIN_API + '/vibeguard/posts/' + postId + '/review', { method: 'POST', body: JSON.stringify({ decision, reason }) });
+    loadVGQueue(); loadVGStats(); loadVGActions();
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+async function loadVGFlags() {
+  const box = document.getElementById('vgFlags');
+  if (!box) return;
+  try {
+    const d = await api(ADMIN_API + '/vibeguard/flags');
+    const flags = (d.data && d.data.flags) || [];
+    box.innerHTML = flags.length ? `<table>
+      <tr><th>Severidade</th><th>Usuário</th><th>Motivo</th><th>Tipo</th><th>Data</th></tr>
+      ${flags.slice(0, 40).map(f => `<tr style="opacity:${f.resolved ? 0.5 : 1}">
+        <td>${f.severity}</td><td>@${esc(f.username || '')}</td><td>${esc(f.label || '')}</td>
+        <td>${esc(f.flag_type || '')}</td><td>${esc(f.created_at || '')}</td>
+      </tr>`).join('')}
+    </table>` : '<p style="color:#6b6b80;padding:14px">Nenhuma flag registrada</p>';
+  } catch (e) { box.innerHTML = '<p style="color:#ff4757;padding:14px">Erro: ' + esc(e.message) + '</p>'; }
+}
+
+async function loadVGActions() {
+  const box = document.getElementById('vgActions');
+  if (!box) return;
+  try {
+    const d = await api(ADMIN_API + '/vibeguard/actions');
+    const acts = (d.data && d.data.actions) || [];
+    box.innerHTML = acts.length ? `<table>
+      <tr><th>Ação</th><th>Moderador</th><th>Alvo</th><th>Nota</th><th>Data</th></tr>
+      ${acts.slice(0, 40).map(a => `<tr>
+        <td>${esc(a.action_type || '')}</td><td>@${esc(a.username || '')}</td>
+        <td>${esc((a.target_type || '') + ' ' + String(a.target_id || '').slice(0, 10))}</td>
+        <td>${esc(a.note || '')}</td><td>${esc(a.created_at || '')}</td>
+      </tr>`).join('')}
+    </table>` : '<p style="color:#6b6b80;padding:14px">Nenhuma ação registrada</p>';
+  } catch (e) { box.innerHTML = '<p style="color:#ff4757;padding:14px">Erro: ' + esc(e.message) + '</p>'; }
+}
+
+async function loadVGChat(silent) {
+  const box = document.getElementById('vgChatBox');
+  if (!box) return;
+  try {
+    const d = await api(ADMIN_API + '/vibeguard/chat');
+    const msgs = (d.data && d.data.messages) || [];
+    const keepScroll = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+    box.innerHTML = msgs.map(m => `
+      <div class="vg-msg ${m.kind === 'alert' ? 'alert' : m.kind === 'system' ? 'system' : ''}">
+        <b>${m.kind === 'alert' ? '🤖 VibeGuard' : esc(m.display_name || m.username || 'Equipe')}</b>
+        <span>${esc(m.message || '')}</span>
+        <small>${esc(m.created_at || '')}${m.case_ref ? ' · caso ' + esc(String(m.case_ref).slice(0, 10)) : ''}</small>
+      </div>`).join('') || '<p style="color:#6b6b80;padding:14px">Canal vazio — alertas automáticos aparecem aqui</p>';
+    if (keepScroll) box.scrollTop = box.scrollHeight;
+  } catch (e) {
+    if (!silent) box.innerHTML = '<p style="color:#ff4757;padding:14px">Erro: ' + esc(e.message) + '</p>';
+  }
+}
+
+async function vgSendChat() {
+  const input = document.getElementById('vgChatMsg');
+  const message = (input ? input.value : '').trim();
+  if (!message) return;
+  try {
+    await api(ADMIN_API + '/vibeguard/chat', { method: 'POST', body: JSON.stringify({ message }) });
+    if (input) input.value = '';
+    loadVGChat();
+  } catch (e) { alert('❌ ' + e.message); }
 }

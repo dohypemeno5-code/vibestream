@@ -203,6 +203,7 @@ app.use(sessionMiddleware);
 const liveRooms = require('./live-rooms');
 const gaming = require('./routes-gaming');
 const childSafety = require('./child-safety');
+const vibeGuard = require('./vibe-guard');
 const security = require('./security');
 const auth = require('./auth');
 
@@ -326,6 +327,12 @@ app.use('/api', (req, res, next) => {
 
 // API do admin
 app.use(`${ADMIN_ROUTE}/api`, adminAuth, require('./admin-routes')(db, ADMIN_SECRET));
+
+// VibeGuard AI: segurança e moderação (bot + fila + chat da equipe)
+// Montado ANTES do catch-all do admin para não cair em 404.
+const vibeguardRoutes = require('./routes-vibeguard')(db);
+app.use('/api', vibeguardRoutes);
+app.use(`${ADMIN_ROUTE}/api`, adminAuth, vibeguardRoutes);
 
 // Catch-all: qualquer rota /api do admin inexistente -> JSON 404 (nunca HTML)
 app.use(`${ADMIN_ROUTE}/api`, (req, res) => {
@@ -570,6 +577,16 @@ wss.on('connection', async (ws, req) => {
         if (!allow.allowed) {
           liveRooms.send(ws, { type: 'live:error', error: allow.reason });
           if (allow.child) { try { childSafety.applyChildBan(d, { userId: uid, autorId: uid, texto: text, ip: ws.ip || '', userAgent: ws.ua || '', matchedTerm: allow.reason }); } catch (e) {} }
+          return;
+        }
+        // VibeGuard: moderação em tempo real (spam, assédio, conteúdo proibido)
+        const vg = vibeGuard.analyzeText(d, text, 'comment');
+        for (const f of vg.flags) vibeGuard.flag(d(), { userId: uid, contentType: 'live_comment', contentId: msg.liveId, type: f.type, label: f.label, severity: f.severity });
+        if (vg.risk === 'high' || vg.risk === 'critical') {
+          liveRooms.send(ws, { type: 'live:error', error: 'Mensagem oculta pela moderação (VibeGuard)' });
+          if (vg.flags.some(f => f.type === 'child')) {
+            try { childSafety.applyChildBan(d, { userId: uid, autorId: uid, texto: text, ip: ws.ip || '', userAgent: ws.ua || '', matchedTerm: vg.reason }); } catch (e) {}
+          }
           return;
         }
         const id = uuid.v4();

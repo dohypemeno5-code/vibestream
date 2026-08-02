@@ -184,6 +184,15 @@ module.exports = function(database) {
         [uuid.v4(), id, req.session.userId, mod.reason]);
     }
 
+    // Bot Observação (VibeGuard): monitora publicações e registra flags/observações
+    try {
+      const vg = require('./vibe-guard');
+      vg.observe(db(), { targetType: 'post', targetId: id, risk: mod.status === 'blocked' ? 'high' : mod.status === 'review' ? 'medium' : 'low', reason: mod.reason || '', details: sanitizedText.slice(0, 300) });
+      if (mod.status === 'review' || mod.status === 'blocked') {
+        vg.flag(db(), { userId: req.session.userId, contentType: 'post', contentId: id, type: mod.status === 'blocked' ? 'blocked' : 'review', label: mod.reason || 'Post em análise', severity: mod.status === 'blocked' ? 'high' : 'medium', source: 'vibeguard' });
+      }
+    } catch (e) {}
+
     // Notificar seguidores: "Fulano publicou algo novo"
     if (mod.status === 'approved') {
       const followers = db().query('SELECT follower_id FROM followers WHERE following_id = ?', [req.session.userId]);

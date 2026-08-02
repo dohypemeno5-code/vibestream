@@ -291,3 +291,25 @@ curl https://integrate-typically-taste-hypothesis.trycloudflare.com/api/health
 curl https://integrate-typically-taste-hypothesis.trycloudflare.com/api/drama
 ```
 
+
+## 🎬 Fluxo de vídeo IA corrigido (VibeAI Creator)
+
+- **Tela de processamento** com barra de progresso por etapa (renderização → validação → envio → publicação).
+- **Visualizar vídeo** antes de publicar (player com o vídeo gerado no aparelho).
+- **Salvar rascunho**: `POST /api/ai/drafts/:id/save-video` valida e guarda o vídeo no servidor.
+- **Publicar no VibeStream**: exige vídeo salvo (`VIDEO_REQUIRED` com mensagem clara), rate limit por usuário.
+- **Validação de arquivo**: magic bytes (WebM/MP4), rejeita vazio/corrompido (`VIDEO_CORRUPT`), limite de 25MB para vídeo e 10MB para imagem (`VIDEO_TOO_LARGE`).
+- **Compactação automática**: qualidade adaptativa por aparelho (360p/540p/720p) com re-tentativa em qualidade menor.
+- **Retry automático** no upload (3 tentativas) e mensagem de erro com "Tentar novamente" e "Salvar rascunho".
+
+## 🤖 VibeGuard AI — Segurança e Moderação
+
+- **Bot Moderação**: analisa comentários e chats em tempo real (inclui WebSocket de lives), detecta spam, assédio, conteúdo proibido e impersonação; mensagens suspeitas são ocultadas e viram `vg_flags`.
+- **Bot Observação**: monitora publicações no momento da criação, registra `vg_observations` e envia posts para revisão humana quando necessário.
+- **Bot Administração**: fila de denúncias priorizada automaticamente (`priorityOf`), ações registradas em `vg_actions` e estatísticas no painel.
+- **Chat da equipe** (`vg_chat`): canal separado para moderadores/admins com alertas automáticos do sistema e histórico de casos.
+- **Denúncia anônima**: `POST /api/vibeguard/report-anonymous` — identidade do denunciante nunca é salva (`reporter_id = NULL`); opção disponível na live e na Central de Denúncias.
+- **Análise de posts**: revisão humana (`POST /api/vibeguard/posts/:id/review`), sistema de punições (aviso/suspensão/ban) e recursos existentes mantidos.
+- **Privacidade**: o VibeGuard nunca acessa mensagens privadas; usa apenas dados necessários para segurança.
+- **Painel Admin**: nova aba "🤖 VibeGuard AI" com estatísticas, fila priorizada, flags, ações e chat da equipe (rotas também montadas em `${ADMIN_ROUTE}/api/vibeguard/*`).
+

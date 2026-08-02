@@ -2727,16 +2727,19 @@ function renderAIPreview(d) {
           <div class="ai-scenes">${scriptHtml}</div>
         </div>
       </div>
+      <div class="ai-saved-chip" id="aiSavedChip" style="${d.video_url ? '' : 'display:none'}">💾 Vídeo salvo no rascunho</div>
       <div class="ai-actions">
         <button class="ai-btn-ghost" onclick="aiGenerate()">✦ Regenerar</button>
-        <button class="ai-btn-publish" onclick="aiPublish()">🎬 Publicar no Feed</button>
+        <button class="ai-btn-ghost" onclick="aiVisualize()">▶ Visualizar vídeo</button>
+        <button class="ai-btn-ghost" onclick="aiSaveDraft()">💾 Salvar rascunho</button>
+        <button class="ai-btn-publish" onclick="aiPublish()">🎬 Publicar no VibeStream</button>
         <button class="ai-btn-ghost danger" onclick="aiReport('${d.id}')">🚨 Denunciar</button>
       </div>
-      <p class="ai-note">Você pode editar tudo antes de publicar. O vídeo é montado no seu aparelho e publicado no Feed.</p>
+      <p class="ai-note">Gere, visualize e salve o rascunho antes de publicar. Falhas no envio tentam novamente em qualidade menor automaticamente.</p>
     </div>`;
 }
 
-function aiPublish() {
+async function aiPublish() {
   const d = aiState.draft;
   if (!d) return;
   const title = document.getElementById('aiEditTitle')?.value || d.title;
@@ -2744,51 +2747,74 @@ function aiPublish() {
   const caption = document.getElementById('aiEditCaption')?.value || d.caption;
   const tagsRaw = document.getElementById('aiEditTags')?.value || '';
   const hashtags = tagsRaw.split(/[,\s#]+/).map(h => h.trim()).filter(Boolean).slice(0, 10);
-  openModal(`
-    <div class="report-modal" style="max-width:420px">
-      <h3>🎬 Gerando seu vídeo</h3>
-      <p style="color:var(--text2);font-size:13px;margin:10px 0">A IA está montando o vídeo com seu roteiro… <b>não feche esta janela.</b></p>
-      <div class="ai-progress" style="display:block">
-        <div class="ai-progress-bar"><i id="pubProgressFill" style="width:10%"></i></div>
-        <p id="pubProgressText" style="font-size:12px;color:var(--text3)">Renderizando cenas…</p>
-      </div>
-    </div>
-  `);
-  makeAIVideo(d, title)
-    .then(async (videoDataUrl) => {
-      const p = document.getElementById('pubProgressFill');
-      const t = document.getElementById('pubProgressText');
-      if (p) p.style.width = '70%';
-      if (t) t.textContent = 'Enviando para o servidor…';
-      const up = await api('/media', { method: 'POST', body: JSON.stringify({ dataUrl: videoDataUrl }) });
-      if (p) p.style.width = '90%';
-      if (t) t.textContent = 'Publicando no Feed…';
-      const pub = await api(`/ai/drafts/${d.id}/publish`, {
-        method: 'POST',
-        body: JSON.stringify({ videoUrl: up.url, title, description, caption, hashtags })
-      });
-      if (p) p.style.width = '100%';
-      if (t) t.textContent = 'Publicado! ✦';
-      closeModal();
-      showToast('🎬 Vídeo publicado no Feed!', 'success');
-      document.getElementById('aiPreview').innerHTML = '';
-      aiState.draft = null;
-      loadAIHistory();
-      loadAIConfig();
-    })
-    .catch((e) => {
-      closeModal();
-      showToast(e.message || 'Falha ao gerar o vídeo', 'error');
+  aiOpenProcess('Gerando seu vídeo');
+  try {
+    aiSetProc(8, 'Preparando renderização…');
+    const out = await aiBuildVideo(d, title, p => aiSetProc(Math.min(55, 8 + p * 0.5), 'Renderizando cenas… ' + p + '%'));
+    aiSetProc(60, 'Validando vídeo (' + out.sizeMB + 'MB)…');
+    await new Promise(r => setTimeout(r, 250));
+    aiSetProc(68, 'Enviando ao servidor…');
+    // Upload com tentativa automática (2 retries)
+    let up = null, lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        up = await api('/media', { method: 'POST', body: JSON.stringify({ dataUrl: out.dataUrl }) });
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 2) { aiSetProc(68 + attempt * 8, 'Falha no envio — tentando novamente…'); await new Promise(r => setTimeout(r, 1200)); }
+      }
+    }
+    if (!up || !up.url) throw lastErr || new Error('Falha no upload do vídeo');
+    aiSetProc(84, 'Publicando no VibeStream…');
+    const pub = await api(`/ai/drafts/${d.id}/publish`, {
+      method: 'POST',
+      body: JSON.stringify({ videoUrl: up.url, title, description, caption, hashtags })
     });
+    aiSetProc(100, 'Publicado! ✦');
+    setTimeout(closeModal, 500);
+    showToast('🎬 Vídeo publicado no Feed!', 'success');
+    document.getElementById('aiPreview').innerHTML = '';
+    aiState.draft = null;
+    loadAIHistory();
+    loadAIConfig();
+  } catch (e) {
+    closeModal();
+    openModal(`
+      <div style="max-width:420px;text-align:center">
+        <div style="font-size:48px">😢</div>
+        <h3>Não foi possível publicar</h3>
+        <p style="color:var(--text2);font-size:13px;margin:10px 0">${escapeHtml(e.message || 'Falha ao gerar ou enviar o vídeo.')}</p>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="ai-btn-ghost" style="flex:1" onclick="closeModal();aiSaveDraft()">💾 Salvar rascunho</button>
+          <button class="ai-btn-publish" style="flex:1" onclick="closeModal();aiPublish()">🔄 Tentar novamente</button>
+        </div>
+      </div>
+    `);
+  }
 }
 
-// Monta o vídeo no canvas (tipografia animada estilo IA) e devolve dataURL webm
-function makeAIVideo(d, title) {
+// ============================================================
+// QUALIDADE ADAPTATIVA + RENDERIZAÇÃO DO VÍDEO IA
+// ============================================================
+function aiQualityTier() {
+  const cores = navigator.hardwareConcurrency || 4;
+  const mem = navigator.deviceMemory || 4;
+  if (cores <= 2 || mem <= 2) return { label: 'baixa', w: 360, h: 640, fps: 24, bps: 800000 };
+  if (cores <= 4 || mem <= 4) return { label: 'media', w: 540, h: 960, fps: 30, bps: 1500000 };
+  return { label: 'alta', w: 720, h: 1280, fps: 30, bps: 2500000 };
+}
+
+// Monta o vídeo no canvas (tipografia animada estilo IA) com qualidade adaptativa.
+// Valida o blob gerado (tamanho/bytes) e rejeita arquivos vazios/corrompidos.
+function makeAIVideo(d, title, opts, onProgress) {
   return new Promise((resolve, reject) => {
-    const W = 720, H = 1280;
+    const t = Object.assign({ w: 540, h: 960, fps: 30, bps: 1500000 }, opts || {});
+    const W = t.w, H = t.h;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return reject(new Error('Seu aparelho não suporta a renderização de vídeo'));
     const styleMap = {
       realista: ['#0f2027', '#203a43', '#2c5364'],
       animacao: ['#6a11cb', '#2575fc'],
@@ -2800,78 +2826,174 @@ function makeAIVideo(d, title) {
     let scenes = [];
     try { scenes = (typeof d.script === 'string' ? JSON.parse(d.script) : d.script).scenes || []; } catch (e) {}
     const lines = [title, ...scenes.map(s => s.hook || '')].slice(0, 6);
-    const stream = canvas.captureStream(30);
+    if (!lines.length) lines.push(title || 'VibeAI');
+    const stream = canvas.captureStream(t.fps);
     const mime = (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) ? 'video/webm;codecs=vp9' : 'video/webm';
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2500000 });
+    let rec;
+    try { rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: t.bps }); }
+    catch (e) {
+      try { rec = new MediaRecorder(stream, { videoBitsPerSecond: t.bps }); }
+      catch (e2) { return reject(new Error('Não foi possível gravar o vídeo neste aparelho')); }
+    }
     const chunks = [];
     rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    let finished = false;
+    let safetyTimer = null;
     rec.onstop = () => {
+      if (finished) return;
+      finished = true;
+      if (safetyTimer) clearTimeout(safetyTimer);
       const blob = new Blob(chunks, { type: 'video/webm' });
+      if (!blob || blob.size < 1024) return reject(new Error('Vídeo gerado vazio — tente novamente'));
       const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
+      fr.onload = () => resolve({ dataUrl: fr.result, blob, sizeMB: Math.round(blob.size / 104857.6) / 10 });
       fr.onerror = () => reject(new Error('Erro ao ler o vídeo gerado'));
       fr.readAsDataURL(blob);
     };
+    rec.onerror = () => reject(new Error('Falha ao gravar o vídeo — tente novamente'));
     rec.start();
-    const totalFrames = 30 * 8; // 8 segundos
+    const totalFrames = t.fps * 8; // 8 segundos
     let frame = 0;
     const draw = () => {
-      const t = frame / totalFrames;
+      const p = frame / totalFrames;
       const grad = ctx.createLinearGradient(0, 0, W, H);
       colors.forEach((c, i) => grad.addColorStop(i / (colors.length - 1 || 1), c));
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
-      // brilho
       ctx.fillStyle = 'rgba(124,58,237,0.25)';
       ctx.beginPath();
-      ctx.arc(W * 0.2, H * 0.25, 180 + 40 * Math.sin(t * 6), 0, Math.PI * 2);
+      ctx.arc(W * 0.2, H * 0.25, H * 0.14 + 40 * Math.sin(p * 6), 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = 'rgba(6,182,212,0.2)';
       ctx.beginPath();
-      ctx.arc(W * 0.85, H * 0.8, 200 + 40 * Math.cos(t * 5), 0, Math.PI * 2);
+      ctx.arc(W * 0.85, H * 0.8, H * 0.16 + 40 * Math.cos(p * 5), 0, Math.PI * 2);
       ctx.fill();
-      // marca
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 26px sans-serif';
+      ctx.font = 'bold ' + Math.round(H * 0.02) + 'px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('✦ VibeAI', 40, 70);
+      ctx.fillText('✦ VibeAI', 40, H * 0.055);
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.font = '18px sans-serif';
-      ctx.fillText('VibeStream · Conectando pessoas', 40, 100);
-      // texto central
-      const lineIdx = Math.min(Math.floor(t * lines.length), lines.length - 1);
+      ctx.font = Math.round(H * 0.014) + 'px sans-serif';
+      ctx.fillText('VibeStream · Conectando pessoas', 40, H * 0.08);
+      const lineIdx = Math.min(Math.floor(p * lines.length), lines.length - 1);
       const line = lines[lineIdx] || '';
-      const appear = Math.min(1, (t * lines.length - lineIdx) * 3);
+      const appear = Math.min(1, (p * lines.length - lineIdx) * 3);
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(0,0,0,' + (0.35 * appear) + ')';
-      ctx.fillRect(W / 2 - 320, H / 2 - 190, 640, 260);
+      ctx.fillRect(W / 2 - W * 0.44, H / 2 - H * 0.15, W * 0.88, H * 0.2);
       ctx.strokeStyle = 'rgba(124,58,237,0.9)';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(W / 2 - 320, H / 2 - 190, 640, 260);
+      ctx.lineWidth = Math.max(2, H * 0.002);
+      ctx.strokeRect(W / 2 - W * 0.44, H / 2 - H * 0.15, W * 0.88, H * 0.2);
       ctx.fillStyle = 'rgba(255,255,255,' + appear + ')';
-      ctx.font = 'bold 34px sans-serif';
-      wrapText(ctx, line, W / 2, H / 2 - 60, 560, 44);
+      ctx.font = 'bold ' + Math.round(H * 0.027) + 'px sans-serif';
+      wrapText(ctx, line, W / 2, H / 2 - H * 0.05, W * 0.78, H * 0.035);
       ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * appear) + ')';
-      ctx.font = '20px sans-serif';
-      ctx.fillText('✦', W / 2, H / 2 + 150 + Math.sin(t * 8) * 8);
-      // progresso
+      ctx.font = Math.round(H * 0.016) + 'px sans-serif';
+      ctx.fillText('✦', W / 2, H / 2 + H * 0.12 + Math.sin(p * 8) * 8);
       ctx.fillStyle = 'rgba(124,58,237,0.9)';
-      ctx.fillRect(40, H - 60, (W - 80) * t, 6);
+      ctx.fillRect(W * 0.055, H - H * 0.05, (W * 0.89) * p, Math.max(4, H * 0.005));
       frame++;
+      if (typeof onProgress === 'function') onProgress(Math.round((frame / totalFrames) * 100));
       if (frame <= totalFrames) requestAnimationFrame(draw);
       else rec.stop();
     };
     draw();
-    const timer = setTimeout(() => { try { rec.stop(); } catch (e) {} }, 15000);
-    rec.onstop = (ev) => {
-      clearTimeout(timer);
-      const blob = new Blob(chunks, { type: 'video/webm' });
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
-      fr.onerror = () => reject(new Error('Erro ao ler o vídeo gerado'));
-      fr.readAsDataURL(blob);
-    };
+    safetyTimer = setTimeout(() => { try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }, 20000);
   });
+}
+
+// Gera o vídeo com compactação automática (qualidade menor) se passar do limite
+async function aiBuildVideo(d, title, onProgress) {
+  const first = aiQualityTier();
+  const tiers = [first, { label: 'media', w: 540, h: 960, fps: 30, bps: 1200000 }, { label: 'baixa', w: 360, h: 640, fps: 24, bps: 700000 }];
+  const used = [];
+  let lastErr = null;
+  for (const tier of tiers) {
+    if (used.includes(tier.label)) continue;
+    used.push(tier.label);
+    try {
+      const out = await makeAIVideo(d, title, tier, onProgress);
+      if (out && out.blob && out.sizeMB <= 24) return { ...out, tier: tier.label };
+      if (out && out.sizeMB > 24) lastErr = new Error('Vídeo grande (' + out.sizeMB + 'MB) — compactando…');
+    } catch (e) { lastErr = e; }
+  }
+  if (lastErr) throw lastErr;
+  throw new Error('Não foi possível gerar o vídeo neste aparelho');
+}
+
+// ============================================================
+// TELA DE PROCESSAMENTO + PROGRESSO
+// ============================================================
+function aiOpenProcess(step) {
+  openModal(`
+    <div class="report-modal" style="max-width:420px">
+      <h3>🎬 ${escapeHtml(step || 'Processando')}</h3>
+      <p style="color:var(--text2);font-size:13px;margin:10px 0"><b>Não feche esta janela.</b></p>
+      <div class="ai-progress" style="display:block">
+        <div class="ai-progress-bar"><i id="aiProcFill" style="width:5%"></i></div>
+        <p id="aiProcLabel" style="font-size:12px;color:var(--text3)">Preparando…</p>
+      </div>
+    </div>
+  `);
+}
+function aiSetProc(pct, label) {
+  const f = document.getElementById('aiProcFill');
+  const l = document.getElementById('aiProcLabel');
+  if (f) f.style.width = pct + '%';
+  if (l) l.textContent = label;
+}
+
+// Visualizar o vídeo antes de publicar
+async function aiVisualize() {
+  const d = aiState.draft;
+  if (!d) return;
+  const title = document.getElementById('aiEditTitle')?.value || d.title;
+  aiOpenProcess('Renderizando vídeo');
+  try {
+    const out = await aiBuildVideo(d, title, p => aiSetProc(Math.min(90, p * 0.9), 'Renderizando cenas… ' + p + '%'));
+    aiSetProc(95, 'Validando arquivo…');
+    const blobUrl = URL.createObjectURL(out.blob);
+    closeModal();
+    openModal(`
+      <div style="max-width:420px">
+        <h3>🎬 Visualizar vídeo <span class="ai-chip">${escapeHtml(out.tier)} · ${out.sizeMB}MB</span></h3>
+        <video src="${blobUrl}" controls autoplay loop playsinline style="width:100%;border-radius:14px;margin:12px 0;background:#000;max-height:420px"></video>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="ai-btn-ghost" onclick="closeModal()">← Voltar</button>
+          <button class="ai-btn-ghost" onclick="closeModal();aiSaveDraft()">💾 Salvar rascunho</button>
+          <button class="ai-btn-publish" style="flex:1" onclick="closeModal();aiPublish()">🎬 Publicar no VibeStream</button>
+        </div>
+      </div>
+    `);
+  } catch (e) {
+    closeModal();
+    showToast(e.message || 'Falha ao renderizar o vídeo', 'error');
+  }
+}
+
+// Salvar rascunho com o vídeo gerado (validação + upload seguro)
+async function aiSaveDraft() {
+  const d = aiState.draft;
+  if (!d) return;
+  const title = document.getElementById('aiEditTitle')?.value || d.title;
+  aiOpenProcess('Salvando rascunho');
+  try {
+    const out = await aiBuildVideo(d, title, p => aiSetProc(Math.min(85, p * 0.85), 'Renderizando cenas… ' + p + '%'));
+    aiSetProc(88, 'Validando formato…');
+    await new Promise(r => setTimeout(r, 300));
+    aiSetProc(92, 'Enviando para o servidor…');
+    const up = await api(`/ai/drafts/${d.id}/save-video`, { method: 'POST', body: JSON.stringify({ videoDataUrl: out.dataUrl }) });
+    aiSetProc(100, 'Rascunho salvo ✓');
+    setTimeout(closeModal, 600);
+    aiState.draft = { ...d, video_url: up.draft ? up.draft.video_url : '' };
+    showToast('💾 Rascunho salvo com o vídeo!', 'success');
+    loadAIHistory();
+    const chip = document.getElementById('aiSavedChip');
+    if (chip) chip.style.display = '';
+  } catch (e) {
+    closeModal();
+    showToast(e.message || 'Falha ao salvar o rascunho', 'error');
+  }
 }
 
 function wrapText(ctx, text, x, y, maxW, lineH) {
@@ -3128,6 +3250,10 @@ function reportLiveNow() {
         <option value="outro">Outro</option>
       </select>
       <textarea id="reportLiveDesc" class="form-input" rows="3" placeholder="Detalhes (opcional)" style="margin-top:8px"></textarea>
+      <input type="url" id="reportLiveEvidence" class="form-input" placeholder="Link de prova (opcional)" style="margin-top:8px">
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--text2)">
+        <input type="checkbox" id="reportLiveAnon" style="width:18px;height:18px"> 🕵️ Denunciar anonimamente (sua identidade fica protegida)
+      </label>
       <button class="btn-primary btn-full" style="margin-top:10px" onclick="submitLiveReport()">Enviar denúncia</button>
     </div>
   `);
@@ -3135,9 +3261,19 @@ function reportLiveNow() {
 async function submitLiveReport() {
   const reason = document.getElementById('reportLiveOpt').value;
   const description = document.getElementById('reportLiveDesc').value;
+  const evidence = document.getElementById('reportLiveEvidence')?.value || '';
+  const anonymous = document.getElementById('reportLiveAnon')?.checked;
   try {
-    const d = await api('/lives/' + liveRoomState.liveId + '/report', { method: 'POST', body: JSON.stringify({ reason, description }) });
-    closeModal(); showToast(d.message || 'Denúncia enviada!', 'success');
+    if (anonymous) {
+      const d = await api('/vibeguard/report-anonymous', {
+        method: 'POST',
+        body: JSON.stringify({ contentType: 'live', contentId: liveRoomState.liveId, reason: reason + (description ? ' — ' + description : ''), evidenceUrl: evidence })
+      });
+      closeModal(); showToast(d.message || 'Denúncia anônima enviada!', 'success');
+    } else {
+      const d = await api('/lives/' + liveRoomState.liveId + '/report', { method: 'POST', body: JSON.stringify({ reason, description }) });
+      closeModal(); showToast(d.message || 'Denúncia enviada!', 'success');
+    }
   } catch (e) { showToast(e.message, 'error'); }
 }
 

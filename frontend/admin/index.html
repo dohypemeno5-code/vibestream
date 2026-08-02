@@ -98,6 +98,7 @@
       <button class="nav-btn" onclick="showTab('economy')">💰 Economia</button>
       <button class="nav-btn admin-only" onclick="showTab('withdrawals')">💸 Saque PIX</button>
       <button class="nav-btn" onclick="showTab('agencies')">🏢 Agências</button>
+      <button class="nav-btn admin-only" onclick="showTab('vibeguard')">🤖 VibeGuard AI</button>
       <button class="nav-btn admin-only" onclick="showTab('alerts')">🚨 Alertas</button>
     </div>
 
@@ -197,6 +198,32 @@
       <div id="tabAgencies" class="tab-content hidden">
         <h2>🏢 Agências de Criadores</h2>
         <div id="agenciesContainer"></div>
+      </div>
+      <div id="tabVibeGuard" class="tab-content hidden admin-only">
+        <h2>🤖 VibeGuard AI — Segurança e Moderação</h2>
+        <div class="vg-stats" id="vgStats"><p style="color:#6b6b80;padding:12px">Carregando estatísticas…</p></div>
+        <div class="section">
+          <h3>📥 Fila de Denúncias (prioridade automática)</h3>
+          <div id="vgQueue"><p style="color:#6b6b80;padding:12px">Carregando…</p></div>
+        </div>
+        <div class="vg-cols">
+          <div class="section">
+            <h3>🚩 Flags do Bot (chat/conteúdo)</h3>
+            <div id="vgFlags"><p style="color:#6b6b80;padding:12px">Carregando…</p></div>
+          </div>
+          <div class="section">
+            <h3>📜 Ações da Equipe</h3>
+            <div id="vgActions"><p style="color:#6b6b80;padding:12px">Carregando…</p></div>
+          </div>
+        </div>
+        <div class="section">
+          <h3>💬 Chat da Equipe de Segurança</h3>
+          <div id="vgChatBox" class="vg-chat-box"><p style="color:#6b6b80;padding:12px">Carregando…</p></div>
+          <div class="vg-chat-input">
+            <input type="text" id="vgChatMsg" placeholder="Mensagem para a equipe… (alertas automáticos aparecem aqui)" onkeydown="if(event.key==='Enter')vgSendChat()">
+            <button onclick="vgSendChat()">➤</button>
+          </div>
+        </div>
       </div>
       <div id="tabAlerts" class="tab-content hidden admin-only">
         <h2>🚨 Alertas de Segurança</h2>

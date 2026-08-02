@@ -26,17 +26,34 @@ function createNotification(db, userId, actorId, type, contentId, text) {
   } catch (e) {}
 }
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;   // 10MB
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024;   // 25MB
+
+// Valida magic bytes: webm (1A45DFA3) ou mp4 (ftyp em 4..8). Rejeita arquivo vazio/corrompido.
+function validateVideoBuffer(buf, mime) {
+  if (!buf || buf.length < 16) return false;
+  if (buf[0] === 0x1A && buf[1] === 0x45 && buf[2] === 0xDF && buf[3] === 0xA3) return true; // webm/mkv
+  if (buf.slice(4, 8).toString('latin1') === 'ftyp') return true; // mp4/mov
+  if (String(mime || '').startsWith('video/')) return true; // tolerância: mime video válido
+  return false;
+}
+
 function saveBase64Media(dataUrl) {
   const match = /^data:([a-z0-9+./-]+);base64,(.*)$/i.exec(dataUrl || '');
   if (!match) return null;
   const mime = match[1];
   const base64 = match[2];
+  if (!base64 || base64.length < 64) return { error: 'invalid', mime };
+  const isVideo = String(mime || '').startsWith('video/');
   const approxBytes = Math.ceil(base64.length * 3 / 4);
-  if (approxBytes > 12 * 1024 * 1024) return { error: 'too_large' };
+  const limit = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+  if (approxBytes > limit) return { error: 'too_large', mime, limit };
   const map = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif', 'video/mp4': '.mp4', 'video/webm': '.webm' };
   const ext = map[mime];
   if (!ext) return null;
   const buf = Buffer.from(base64, 'base64');
+  if (!buf.length) return { error: 'invalid', mime };
+  if (isVideo && !validateVideoBuffer(buf, mime)) return { error: 'corrupt', mime };
   const dir = path.join(__dirname, 'uploads');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
   const name = 'ai_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex') + ext;
@@ -165,12 +182,48 @@ router.get('/ai/drafts/:id', (req, res) => {
 });
 
 // ============================================================
+// SALVAR VÍDEO DO RASCUNHO (gerado no aparelho -> servidor)
+// Valida formato/tamanho, protege contra arquivo corrompido.
+// ============================================================
+router.post('/ai/drafts/:id/save-video', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  try {
+    if (!req.session?.userId) return res.status(401).json({ error: 'Não autenticado' });
+    const rl = security.rateLimit(db(), 'ai-savevideo:' + req.session.userId, 3600, 40);
+    if (rl.blocked) return res.status(429).json({ error: rl.reason, code: 'RATE_LIMITED' });
+    const draft = ownDraft(db, req.params.id, req.session.userId);
+    if (!draft) return res.status(404).json({ error: 'Rascunho não encontrado' });
+    if (draft.status === 'published') return res.status(400).json({ error: 'Este vídeo já foi publicado' });
+
+    const { videoDataUrl, videoUrl: videoUrlBody } = req.body || {};
+    let videoUrl = draft.video_url || '';
+    if (videoUrlBody && /^\/uploads\//.test(videoUrlBody)) {
+      videoUrl = String(videoUrlBody).slice(0, 300);
+    } else if (videoDataUrl) {
+      const saved = saveBase64Media(videoDataUrl);
+      if (!saved || saved.error === 'invalid') return res.status(400).json({ error: 'Vídeo inválido — use MP4 ou WebM' });
+      if (saved.error === 'corrupt') return res.status(400).json({ error: 'Arquivo de vídeo corrompido — gere novamente' });
+      if (saved.error === 'too_large') return res.status(400).json({ error: 'Vídeo muito grande (máx 25MB). Tente em qualidade menor.', code: 'VIDEO_TOO_LARGE' });
+      videoUrl = saved.url;
+    }
+    if (!videoUrl) return res.status(400).json({ error: 'Envie o vídeo gerado (videoDataUrl ou videoUrl)' });
+
+    db().run("UPDATE ai_drafts SET video_url = ?, status = 'ready' WHERE id = ?", [videoUrl, draft.id]);
+    ai.log(db, req.session.userId, 'save_video', 'ok', videoUrl, req.ip);
+    const updated = db().get('SELECT * FROM ai_drafts WHERE id = ?', [draft.id]);
+    res.status(201).json({ success: true, message: 'Rascunho salvo com o vídeo!', draft: updated });
+  } catch (e) { return res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================
 // PUBLICAR NO FEED (salva vídeo, cria post, notifica seguidores)
 // ============================================================
 router.post('/ai/drafts/:id/publish', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   try {
     if (!req.session?.userId) return res.status(401).json({ error: 'Não autenticado' });
+    const rl = security.rateLimit(db(), 'ai-publish:' + req.session.userId, 3600, 30);
+    if (rl.blocked) return res.status(429).json({ error: rl.reason, code: 'RATE_LIMITED' });
     const draft = ownDraft(db, req.params.id, req.session.userId);
     if (!draft) return res.status(404).json({ error: 'Rascunho não encontrado' });
     if (draft.status === 'published') return res.status(400).json({ error: 'Este vídeo já foi publicado' });
@@ -207,9 +260,14 @@ router.post('/ai/drafts/:id/publish', (req, res) => {
       videoUrl = String(videoUrlBody).slice(0, 300);
     } else if (videoDataUrl) {
       const saved = saveBase64Media(videoDataUrl);
-      if (!saved) return res.status(400).json({ error: 'Vídeo inválido (use MP4 ou WebM)' });
-      if (saved.error === 'too_large') return res.status(400).json({ error: 'Vídeo muito grande (máx 12MB)' });
+      if (!saved || saved.error === 'invalid') return res.status(400).json({ error: 'Vídeo inválido (use MP4 ou WebM)' });
+      if (saved.error === 'corrupt') return res.status(400).json({ error: 'Arquivo de vídeo corrompido — gere o vídeo novamente', code: 'VIDEO_CORRUPT' });
+      if (saved.error === 'too_large') return res.status(400).json({ error: 'Vídeo muito grande (máx 25MB). Escolha qualidade menor.', code: 'VIDEO_TOO_LARGE' });
       videoUrl = saved.url;
+    }
+    if (!videoUrl) {
+      ai.log(db, req.session.userId, 'publish_novideo', 'denied', 'sem vídeo', req.ip);
+      return res.status(400).json({ error: 'Gere e salve o vídeo antes de publicar (use Visualizar vídeo > Salvar rascunho)', code: 'VIDEO_REQUIRED' });
     }
 
     let coverUrl = draft.cover_url || '';
