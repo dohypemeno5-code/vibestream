@@ -2,7 +2,7 @@
 
 **Plataforma de Live Streaming Real - Estilo Kwai + Jogo VibeStrike 2D**
 
-🌐 **Link Público:** [https://post-pioneer-kruger-saves.trycloudflare.com](https://post-pioneer-kruger-saves.trycloudflare.com)
+🌐 **Link Público:** [https://dohypemeno5-code.github.io/vibestream](https://dohypemeno5-code.github.io/vibestream)
 
 > URL do tunnel muda se o cloudflared reiniciar — sempre atualizada em `/tmp/vibestream-url.txt`.
 
@@ -56,7 +56,7 @@ bash /tmp/build-vibestream-aapt.sh          # gera frontend/apk/vibestream.apk
 ## 🔐 Acesso Admin
 
 ```
-Admin (REAL e escondido): https://post-pioneer-kruger-saves.trycloudflare.com/admin-vsadm_bbcfb56ec52ae932e6
+Admin (REAL e escondido): https://dohypemeno5-code.github.io/vibestream/admin-vsadm_bbcfb56ec52ae932e6
 Usuário: admin
 Senha: Melhora@2024!SecureAdmin
 Secret (header): vsadm_bbcfb56ec52ae932e6
@@ -237,14 +237,14 @@ melhora-app-live-real-igual-kwai/
 
 ## 🌐 Domínio próprio (vibestream.com.br)
 
-Para sair do `trycloudflare.com`:
+Sobre o deploy no GitHub Pages:
 1. Compre o domínio em um registrador (ex.: registro.br, Hostinger, GoDaddy).
 2. Crie um registro DNS **A** apontando `vibestream.com.br` (e `www`) para o IP do servidor onde o Node roda (porta 80/443).
 3. Instale HTTPS: aponte um túnel Cloudflare **named tunnel** para o domínio, ou use Caddy/Nginx com Let's Encrypt na frente do `localhost:3000`.
 4. Adicione `https://vibestream.com.br,https://www.vibestream.com.br` em `ALLOWED_ORIGINS` no `.env` (já estão incluídos) e reinicie.
 5. Atualize o `PUBLIC_URL`/links externos e o `manifest.json` (scope/start_url) para o domínio final.
 
-⚠️ O servidor continua rodando no túnel atual (`post-pioneer-kruger-saves.trycloudflare.com`) enquanto o domínio não é apontado — após configurar o domínio, o endereço trycloudflare deve ser abandonado.
+⚠️ O frontend está publicado no GitHub Pages. O backend (API) precisa de um servidor público (túnel/VPS) para Feed, Chat e Lives funcionarem.
 
 ## 🚀 Deploy em Produção
 
